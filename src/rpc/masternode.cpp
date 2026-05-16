@@ -952,7 +952,11 @@ UniValue getmasternodescores (const UniValue& params, bool fHelp)
     UniValue obj(UniValue::VOBJ);
 
     std::vector<CMasternode> vMasternodes = mnodeman.GetFullMasternodeVector();
-    for (int nHeight = chainActive.Tip()->nHeight - nLast; nHeight < chainActive.Tip()->nHeight + 20; nHeight++) {
+    CBlockIndex* pTip = chainActive.Tip();
+    if (!pTip)
+        return obj;
+    const int tipHeight = pTip->nHeight;
+    for (int nHeight = tipHeight - nLast; nHeight < tipHeight + 20; nHeight++) {
         UniValue block (UniValue::VARR);
         
         for (unsigned int masternodeTier = 1; masternodeTier <= Params ().getMasternodeTierCount (); masternodeTier++) {

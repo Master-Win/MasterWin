@@ -62,6 +62,100 @@ struct CDiskBlockPos {
     bool IsNull() const { return (nFile == -1); }
 };
 
+/** Compact replacement for std::map<libzerocoin::CoinDenomination, int64_t>.
+ *  Stores supply per denomination in a fixed 8-slot array (~64 B vs.
+ *  ~450 B for an 8-entry std::map node-allocation tree). On-disk / wire
+ *  format is kept byte-identical to the old std::map serialisation for
+ *  chain-state backwards compatibility (no -reindex needed).
+ *  Index assignment matches libzerocoin::zerocoinDenomList ordering. */
+struct ZerocoinSupplyMap
+{
+    int64_t v[8];
+
+    ZerocoinSupplyMap()
+    {
+        for (int i = 0; i < 8; ++i) v[i] = 0;
+    }
+
+    static int denomIndex(libzerocoin::CoinDenomination d)
+    {
+        switch (d) {
+            case libzerocoin::ZQ_ONE:           return 0;
+            case libzerocoin::ZQ_FIVE:          return 1;
+            case libzerocoin::ZQ_TEN:           return 2;
+            case libzerocoin::ZQ_FIFTY:         return 3;
+            case libzerocoin::ZQ_ONE_HUNDRED:   return 4;
+            case libzerocoin::ZQ_FIVE_HUNDRED:  return 5;
+            case libzerocoin::ZQ_ONE_THOUSAND:  return 6;
+            case libzerocoin::ZQ_FIVE_THOUSAND: return 7;
+            default:                            return -1;
+        }
+    }
+
+    int64_t& at(libzerocoin::CoinDenomination d)
+    {
+        int idx = denomIndex(d);
+        assert(idx >= 0);
+        return v[idx];
+    }
+
+    const int64_t& at(libzerocoin::CoinDenomination d) const
+    {
+        int idx = denomIndex(d);
+        assert(idx >= 0);
+        return v[idx];
+    }
+
+    // Wire format identical to the old std::map<CoinDenomination, int64_t>:
+    //   [compact-size] then {[CoinDenomination][int64_t]} pairs ascending.
+    // (Serialize / Unserialize / GetSerializeSize provided explicitly --
+    //  ADD_SERIALIZE_METHODS would force a single body to type-check for
+    //  both read and write paths, which fails on CSizeComputer.)
+    unsigned int GetSerializeSize(int nType, int nVersion = 0) const
+    {
+        // 1 byte compact-size for "8" + 8 * (CoinDenomination + int64_t).
+        // CoinDenomination is written via ZerocoinDenominationToInt -> int.
+        return 1 + 8 * (sizeof(libzerocoin::CoinDenomination) + sizeof(int64_t));
+    }
+
+    template <typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const
+    {
+        static const libzerocoin::CoinDenomination order[8] = {
+            libzerocoin::ZQ_ONE,
+            libzerocoin::ZQ_FIVE,
+            libzerocoin::ZQ_TEN,
+            libzerocoin::ZQ_FIFTY,
+            libzerocoin::ZQ_ONE_HUNDRED,
+            libzerocoin::ZQ_FIVE_HUNDRED,
+            libzerocoin::ZQ_ONE_THOUSAND,
+            libzerocoin::ZQ_FIVE_THOUSAND
+        };
+        WriteCompactSize(s, 8);
+        for (int i = 0; i < 8; ++i) {
+            libzerocoin::CoinDenomination denom = order[i];
+            int64_t value = v[i];
+            ::Serialize(s, denom, nType, nVersion);
+            ::Serialize(s, value, nType, nVersion);
+        }
+    }
+
+    template <typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion)
+    {
+        for (int i = 0; i < 8; ++i) v[i] = 0;
+        uint64_t nSize = ReadCompactSize(s);
+        for (uint64_t i = 0; i < nSize; ++i) {
+            libzerocoin::CoinDenomination key = libzerocoin::ZQ_ERROR;
+            int64_t value = 0;
+            ::Unserialize(s, key, nType, nVersion);
+            ::Unserialize(s, value, nType, nVersion);
+            int idx = denomIndex(key);
+            if (idx >= 0) v[idx] = value;
+        }
+    }
+};
+
 enum BlockStatus {
     //! Unused.
     BLOCK_VALID_UNKNOWN = 0,
@@ -180,7 +274,9 @@ public:
     uint32_t nSequenceId;
     
     //! zerocoin specific fields
-    std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
+    // Compact 8-slot array (see ZerocoinSupplyMap above) instead of std::map:
+    // saves several hundred bytes per CBlockIndex on a long chain.
+    ZerocoinSupplyMap mapZerocoinSupply;
     std::vector<libzerocoin::CoinDenomination> vMintDenominationsInBlock;
     
     void SetNull()
@@ -212,10 +308,9 @@ public:
         nBits = 0;
         nNonce = 0;
         nAccumulatorCheckpoint = 0;
-        // Start supply of each denomination with 0s
-        for (auto& denom : libzerocoin::zerocoinDenomList) {
-            mapZerocoinSupply.insert(make_pair(denom, 0));
-        }
+        // mapZerocoinSupply default-constructs to all-zero (ZerocoinSupplyMap);
+        // no per-denomination insert/allocation needed.
+        mapZerocoinSupply = ZerocoinSupplyMap();
         vMintDenominationsInBlock.clear();
     }
 

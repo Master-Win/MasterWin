@@ -573,7 +573,10 @@ UniValue getstakingstatus(const UniValue& params, bool fHelp)
 #endif
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("validtime", chainActive.Tip()->nTime > 1471482000));
+    CBlockIndex* pTip = chainActive.Tip();
+    // Early during init / IBD the tip can still be NULL. Don't crash --
+    // report neutral values so the explorer / monitoring keeps polling.
+    obj.push_back(Pair("validtime", pTip ? (pTip->nTime > 1471482000) : false));
     obj.push_back(Pair("haveconnections", !vNodes.empty()));
     if (pwalletMain) {
         obj.push_back(Pair("walletunlocked", !pwalletMain->IsLocked()));
@@ -583,10 +586,12 @@ UniValue getstakingstatus(const UniValue& params, bool fHelp)
     obj.push_back(Pair("mnsync", masternodeSync.IsSynced()));
 
     bool nStaking = false;
-    if (mapHashedBlocks.count(chainActive.Tip()->nHeight))
-        nStaking = true;
-    else if (mapHashedBlocks.count(chainActive.Tip()->nHeight - 1) && nLastCoinStakeSearchInterval)
-        nStaking = true;
+    if (pTip) {
+        if (mapHashedBlocks.count(pTip->nHeight))
+            nStaking = true;
+        else if (mapHashedBlocks.count(pTip->nHeight - 1) && nLastCoinStakeSearchInterval)
+            nStaking = true;
+    }
     obj.push_back(Pair("staking status", nStaking));
 
     return obj;

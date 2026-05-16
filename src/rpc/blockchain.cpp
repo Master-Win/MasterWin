@@ -154,7 +154,10 @@ UniValue getbestblockhash(const UniValue& params, bool fHelp)
             HelpExampleCli("getbestblockhash", "") + HelpExampleRpc("getbestblockhash", ""));
 
     LOCK(cs_main);
-    return chainActive.Tip()->GetBlockHash().GetHex();
+    CBlockIndex* pTip = chainActive.Tip();
+    if (!pTip)
+        return UniValue(UniValue::VNULL);
+    return pTip->GetBlockHash().GetHex();
 }
 
 UniValue getdifficulty(const UniValue& params, bool fHelp)
@@ -581,14 +584,16 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
+    CBlockIndex* pTip = chainActive.Tip();
+
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("chain", Params().NetworkIDString()));
     obj.push_back(Pair("blocks", (int)chainActive.Height()));
     obj.push_back(Pair("headers", pindexBestHeader ? pindexBestHeader->nHeight : -1));
-    obj.push_back(Pair("bestblockhash", chainActive.Tip()->GetBlockHash().GetHex()));
+    obj.push_back(Pair("bestblockhash", pTip ? pTip->GetBlockHash().GetHex() : std::string()));
     obj.push_back(Pair("difficulty", (double)GetDifficulty()));
-    obj.push_back(Pair("verificationprogress", Checkpoints::GuessVerificationProgress(chainActive.Tip())));
-    obj.push_back(Pair("chainwork", chainActive.Tip()->nChainWork.GetHex()));
+    obj.push_back(Pair("verificationprogress", Checkpoints::GuessVerificationProgress(pTip)));
+    obj.push_back(Pair("chainwork", pTip ? pTip->nChainWork.GetHex() : std::string()));
     return obj;
 }
 
