@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_hist" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#8b5cff"/>
+      <stop offset="100%" stop-color="#00f0ff"/>
+    </linearGradient>
+    <radialGradient id="g_face" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#10122c"/>
+      <stop offset="100%" stop-color="#07081f"/>
+    </radialGradient>
+    <filter id="glow_h" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- outer clock ring with neon gradient stroke -->
+  <g filter="url(#glow_h)">
+    <circle cx="40" cy="42" r="24" fill="url(#g_face)" stroke="url(#g_hist)" stroke-width="3"/>
+  </g>
+  <!-- 12-position ticks -->
+  <g stroke="#9fa8d6" stroke-width="1" opacity="0.7">
+    <line x1="40" y1="20" x2="40" y2="24"/>
+    <line x1="40" y1="60" x2="40" y2="64"/>
+    <line x1="18" y1="42" x2="22" y2="42"/>
+    <line x1="58" y1="42" x2="62" y2="42"/>
+  </g>
+  <!-- hands: hour neon-gold, minute neon-cyan -->
+  <line x1="40" y1="42" x2="40" y2="28" stroke="#ffd24a" stroke-width="3" stroke-linecap="round"/>
+  <line x1="40" y1="42" x2="52" y2="42" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/>
+  <!-- center pivot -->
+  <circle cx="40" cy="42" r="2.5" fill="#ff2cd5"/>
+  <!-- arrow back (history) -->
+  <path d="M16 14 L18 22 L26 18 Z" fill="#00f0ff" opacity="0.85"/>
+  <path d="M18 22 C 20 30 28 32 36 30" fill="none" stroke="#00f0ff" stroke-width="1.5" opacity="0.6"/>
+</svg>

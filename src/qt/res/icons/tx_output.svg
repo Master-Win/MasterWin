@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TX_OUTPUT: sending. 3D neon paper plane flying out. -->
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="op" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#ff2cd5"/>
+      <stop offset="50%" stop-color="#a040ff"/>
+      <stop offset="100%" stop-color="#00f0ff"/>
+    </linearGradient>
+    <linearGradient id="opdark" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#7a14a0"/>
+      <stop offset="100%" stop-color="#003c80"/>
+    </linearGradient>
+    <filter id="ofx" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#ofx)">
+    <!-- plane body (main wing) -->
+    <path d="M3 18 L29 3 L24 27 L17 18 Z" fill="url(#op)" stroke="#ff2cd5" stroke-width="0.8" stroke-linejoin="round"/>
+    <!-- folded fin (depth shadow) -->
+    <path d="M17 18 L24 27 L20 19 Z" fill="url(#opdark)"/>
+    <!-- crease highlight -->
+    <path d="M3 18 L17 18 L29 3" fill="none" stroke="#ffffff" stroke-width="0.7" opacity="0.65"/>
+  </g>
+  <!-- trail particles -->
+  <g fill="#ff2cd5">
+    <circle cx="2" cy="22" r="1.2" opacity="0.85"/>
+    <circle cx="1" cy="25" r="0.8" opacity="0.55"/>
+    <circle cx="0.5" cy="28" r="0.5" opacity="0.3"/>
+  </g>
+</svg>

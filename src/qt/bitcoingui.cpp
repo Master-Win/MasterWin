@@ -37,6 +37,11 @@
 
 #include <iostream>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <dwmapi.h>
+#endif
+
 #include <QAction>
 #include <QApplication>
 #include <QDateTime>
@@ -69,6 +74,7 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
                                                                             labelTorIcon(0),
                                                                             labelConnectionsIcon(0),
                                                                             labelBlocksIcon(0),
+                                                                            labelBlocksCount(0),
                                                                             progressBarLabel(0),
                                                                             progressBar(0),
                                                                             progressDialog(0),
@@ -110,6 +116,20 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
     this->setStyleSheet(GUIUtil::loadStyleSheet());
 
     GUIUtil::restoreWindowGeometry("nWindow", QSize(850, 550), this);
+
+#ifdef Q_OS_WIN
+    // MW v5 Neon Edition: ask Windows to draw the native title bar in dark
+    // mode so the white system bar above our QSS-styled menu disappears.
+    // DWMWA_USE_IMMERSIVE_DARK_MODE = 20 on Windows 10 build 19041+, fell
+    // back to 19 on earlier 10 builds. Calling both is harmless: the older
+    // attribute is silently ignored on newer builds and vice versa.
+    {
+        HWND hwnd = reinterpret_cast<HWND>(this->winId());
+        BOOL useDark = TRUE;
+        DwmSetWindowAttribute(hwnd, 20, &useDark, sizeof(useDark));
+        DwmSetWindowAttribute(hwnd, 19, &useDark, sizeof(useDark));
+    }
+#endif
 
 	QString windowTitle = tr("MasterWin Coin") + " - ";
 #ifdef ENABLE_WALLET
@@ -196,6 +216,13 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
     labelConnectionsIcon->setStyleSheet(".QPushButton { background-color: rgba(255, 255, 255, 0);}");
     labelConnectionsIcon->setMaximumSize(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE);
     labelBlocksIcon = new QLabel();
+    // v5: show the current block height as a compact number next to the
+    // sync icon, so users see at a glance which block the wallet is at
+    // (was tooltip-only before, now visible inline).
+    labelBlocksCount = new QLabel();
+    labelBlocksCount->setObjectName("labelBlocksCount");
+    labelBlocksCount->setStyleSheet("color: #c8b97a; font-family: 'Rajdhani'; font-size: 12px; padding-right: 6px;");
+    labelBlocksCount->setText("");
 #ifdef ENABLE_WALLET
     if (enableWallet) {
         frameBlocksLayout->addStretch();
@@ -213,6 +240,7 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
     frameBlocksLayout->addWidget(labelConnectionsIcon);
     frameBlocksLayout->addStretch();
     frameBlocksLayout->addWidget(labelBlocksIcon);
+    frameBlocksLayout->addWidget(labelBlocksCount);
     frameBlocksLayout->addStretch();
 
     // Progress bar and label for blocks download
@@ -345,7 +373,10 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
 #ifdef ENABLE_WALLET
 
     QSettings settings;
-    if (settings.value("fShowMasternodesTab").toBool()) {
+    // v5: hard-disable the Masternodes tab. The coin is PoS-only and there
+    // are no masternodes to browse / start / configure. Setting is ignored
+    // even if a user manually flipped fShowMasternodesTab from v4 days.
+    if (false && settings.value("fShowMasternodesTab").toBool()) {
         masternodeAction = new QAction(QIcon(":/icons/masternodes"), tr("&Masternodes"), this);
         masternodeAction->setStatusTip(tr("Browse masternodes"));
         masternodeAction->setToolTip(masternodeAction->statusTip());
@@ -522,7 +553,8 @@ void BitcoinGUI::createMenuBar()
         tools->addAction(openRepairAction);
         tools->addSeparator();
         tools->addAction(openConfEditorAction);
-        tools->addAction(openMNConfEditorAction);
+        // v5: masternodes are deprecated, no masternode.conf editor in the menu
+        // tools->addAction(openMNConfEditorAction);
         tools->addAction(showBackupsAction);
         tools->addAction(openBlockExplorerAction);
     }
@@ -550,7 +582,8 @@ void BitcoinGUI::createToolBars()
         toolbar->addAction(receiveCoinsAction);
         toolbar->addAction(historyAction);
         QSettings settings;
-        if (settings.value("fShowMasternodesTab").toBool()) {
+        // v5: Masternodes-Tab permanent disabled (see CreateActions comment).
+        if (false && settings.value("fShowMasternodesTab").toBool()) {
             toolbar->addAction(masternodeAction);
         }
         toolbar->setMovable(false); // remove unused icon in upper left corner
@@ -653,7 +686,8 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     receiveCoinsAction->setEnabled(enabled);
     historyAction->setEnabled(enabled);
     QSettings settings;
-    if (settings.value("fShowMasternodesTab").toBool()) {
+    // v5: Masternodes-Tab permanent disabled (see CreateActions comment).
+    if (false && settings.value("fShowMasternodesTab").toBool()) {
         masternodeAction->setEnabled(enabled);
     }
     encryptWalletAction->setEnabled(enabled);
@@ -721,7 +755,8 @@ void BitcoinGUI::createTrayIconMenu()
     trayIconMenu->addAction(openRepairAction);
     trayIconMenu->addSeparator();
     trayIconMenu->addAction(openConfEditorAction);
-    trayIconMenu->addAction(openMNConfEditorAction);
+    // v5: no masternode.conf editor in tray menu either
+    // trayIconMenu->addAction(openMNConfEditorAction);
     trayIconMenu->addAction(showBackupsAction);
     trayIconMenu->addAction(openBlockExplorerAction);
 #ifndef Q_OS_MAC // This is built-in on Mac
@@ -890,6 +925,11 @@ void BitcoinGUI::setNumBlocks(int count)
     // Prevent orphan statusbar messages (e.g. hover Quit in main menu, wait until chain-sync starts -> garbelled text)
     statusBar()->clearMessage();
 
+    // v5: surface the current block height as a compact number next to the
+    // sync icon so it's visible at a glance (not only in the icon tooltip).
+    if (labelBlocksCount)
+        labelBlocksCount->setText(QString("#%1").arg(count));
+
     // Acquire current block source
     enum BlockSource blockSource = clientModel->getBlockSource();
     switch (blockSource) {
@@ -926,6 +966,10 @@ void BitcoinGUI::setNumBlocks(int count)
             progressBarLabel->setVisible(false);
             progressBar->setVisible(false);
             labelBlocksIcon->setPixmap(QIcon(":/icons/synced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
+            // Fully synced -- the "Up to date." line set above (line 947)
+            // is enough.  Don't append a second copy from GetSyncStatus()
+            // (which now also returns "Up to date" in the FINISHED state),
+            // or the tooltip ends up with two redundant "Up to date" lines.
 		}
 		else {
             int nAttempt;
@@ -949,11 +993,11 @@ void BitcoinGUI::setNumBlocks(int count)
             progressBar->setMaximum(4 * MASTERNODE_SYNC_THRESHOLD);
             progressBar->setFormat(tr("Synchronizing additional data: %p%"));
             progressBar->setValue(progress);
-        }
 
-        strSyncStatus = QString(masternodeSync.GetSyncStatus().c_str());
-        progressBarLabel->setText(strSyncStatus);
-        tooltip = strSyncStatus + QString("<br>") + tooltip;
+            strSyncStatus = QString(masternodeSync.GetSyncStatus().c_str());
+            progressBarLabel->setText(strSyncStatus);
+            tooltip = strSyncStatus + QString("<br>") + tooltip;
+        }
 	}
 	else {
         // Represent time from last generated block in human readable text

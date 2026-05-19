@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Outer rim: cyan -> violet -> magenta gradient -->
+    <linearGradient id="g_rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#00f0ff"/>
+      <stop offset="50%"  stop-color="#8b5cff"/>
+      <stop offset="100%" stop-color="#ff2cd5"/>
+    </linearGradient>
+    <!-- Inner face: deep space -->
+    <radialGradient id="g_face" cx="50%" cy="40%" r="65%">
+      <stop offset="0%"   stop-color="#1a1d3f"/>
+      <stop offset="100%" stop-color="#07081f"/>
+    </radialGradient>
+    <!-- M letter: gold -> orange -->
+    <linearGradient id="g_m" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#ffd24a"/>
+      <stop offset="70%"  stop-color="#ff7a3d"/>
+      <stop offset="100%" stop-color="#ff2cd5"/>
+    </linearGradient>
+    <!-- W letter: cyan -> violet -->
+    <linearGradient id="g_w" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#00f0ff"/>
+      <stop offset="100%" stop-color="#8b5cff"/>
+    </linearGradient>
+    <filter id="glow_logo" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft_glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer rim with glow -->
+  <g filter="url(#glow_logo)">
+    <circle cx="256" cy="256" r="230" fill="url(#g_rim)"/>
+  </g>
+  <!-- Inner face (the actual coin face) -->
+  <circle cx="256" cy="256" r="206" fill="url(#g_face)"/>
+  <!-- subtle inner highlight ring -->
+  <circle cx="256" cy="256" r="206" fill="none" stroke="#00f0ff" stroke-width="1.5" opacity="0.35"/>
+  <circle cx="256" cy="256" r="195" fill="none" stroke="#ff2cd5" stroke-width="1" opacity="0.25"/>
+
+  <!-- "MW" monogram -->
+  <g filter="url(#soft_glow)" stroke-linejoin="round" stroke-linecap="round">
+    <!-- M (left side, gold->magenta) -->
+    <path d="M138 360 L138 168 L188 168 L228 252 L268 168 L318 168 L318 360 L278 360 L278 232 L242 312 L214 312 L178 232 L178 360 Z"
+          fill="url(#g_m)" stroke="#ffd24a" stroke-width="2"/>
+  </g>
+
+  <!-- separator dot -->
+  <circle cx="256" cy="402" r="6" fill="#ffd24a"/>
+
+  <!-- tiny decorative ticks around the rim -->
+  <g fill="#00f0ff" opacity="0.6">
+    <circle cx="256" cy="36"  r="3"/>
+    <circle cx="256" cy="476" r="3"/>
+    <circle cx="36"  cy="256" r="3"/>
+    <circle cx="476" cy="256" r="3"/>
+  </g>
+</svg>

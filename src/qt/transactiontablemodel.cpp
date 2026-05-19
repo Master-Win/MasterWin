@@ -333,7 +333,11 @@ QString TransactionTableModel::formatTxType(const TransactionRecord* wtx) const
     case TransactionRecord::RecvWithAddress:
         return tr("Received with");
     case TransactionRecord::MNReward:
-        return tr("Masternode Reward");
+        // Repurposed in v5: the legacy "masternode reward" output is now
+        // the dev-fee (25% of block reward) -- see the consensus change
+        // at block 2,020,328.  Enum value kept as MNReward for wallet-db
+        // schema stability; only the user-facing label changes.
+        return tr("Dev-Fee");
     case TransactionRecord::RecvFromOther:
         return tr("Received from");
     case TransactionRecord::RecvWithObfuscation:

@@ -53,8 +53,20 @@ bool CMasternodeSync::IsBlockchainSynced()
     if (pindex == NULL) return false;
 
 
-    if (pindex->nTime + 60 * 60 < GetTime())
-        return false;
+    // Bypass the "tip younger than 1 hour" gate when EITHER:
+    //   a) `-bypassmnsync=1` is set explicitly, OR
+    //   b) the chain has crossed the MW v5 fork height (post-v5 the
+    //      masternode-sync FSM is functionally obsolete).
+    // Without one of these, an abandoned-coin scenario locks staking out
+    // permanently: stale tip -> IsBlockchainSynced=false -> mnsync stuck ->
+    // no stake produced -> tip stays stale forever -> deadlock.
+    // Behaviour change is purely local; the block produced is still
+    // validated by every other node by the regular consensus rules.
+    bool fV5Active = Params().IsV5Active(pindex->nHeight + 1);
+    if (!fV5Active && !GetBoolArg("-bypassmnsync", false)) {
+        if (pindex->nTime + 60 * 60 < GetTime())
+            return false;
+    }
 
     fBlockchainSynced = true;
 
@@ -162,21 +174,24 @@ void CMasternodeSync::GetNextAsset()
 
 std::string CMasternodeSync::GetSyncStatus()
 {
+    // MasterWin v5: Process() pins the state to FINISHED immediately so
+    // only INITIAL (the first scheduler tick) and FINISHED are reachable
+    // in practice.  The remaining cases stay around as documentation /
+    // safety nets and are rephrased to drop the masternode / budget
+    // terminology that no longer applies in v5.
     switch (masternodeSync.RequestedMasternodeAssets) {
     case MASTERNODE_SYNC_INITIAL:
-        return _("Synchronization pending...");
+        return _("Initializing...");
     case MASTERNODE_SYNC_SPORKS:
         return _("Synchronizing sporks...");
     case MASTERNODE_SYNC_LIST:
-        return _("Synchronizing masternodes...");
     case MASTERNODE_SYNC_MNW:
-        return _("Synchronizing masternode winners...");
     case MASTERNODE_SYNC_BUDGET:
-        return _("Synchronizing budgets...");
+        return _("Synchronizing legacy peer data...");
     case MASTERNODE_SYNC_FAILED:
         return _("Synchronization failed");
     case MASTERNODE_SYNC_FINISHED:
-        return _("Synchronization finished");
+        return _("Up to date");
     }
     return "";
 }
@@ -237,169 +252,21 @@ void CMasternodeSync::Process()
 
     if (tick++ % MASTERNODE_SYNC_TIMEOUT != 0) return;
 
-    if (IsSynced()) {
-        /* 
-            Resync if we lose all masternodes from sleep/wake or failure to sync originally
-        */
-        if (mnodeman.CountEnabled() == 0) {
-            Reset();
-        } else
-            return;
-    }
-
-    //try syncing again
-    if (RequestedMasternodeAssets == MASTERNODE_SYNC_FAILED && lastFailure + (1 * 60) < GetTime()) {
-        Reset();
-    } else if (RequestedMasternodeAssets == MASTERNODE_SYNC_FAILED) {
-        return;
-    }
-
-    LogPrint("masternode", "CMasternodeSync::Process() - tick %d RequestedMasternodeAssets %d\n", tick, RequestedMasternodeAssets);
-
-    if (RequestedMasternodeAssets == MASTERNODE_SYNC_INITIAL) GetNextAsset();
-
-    // sporks synced but blockchain is not, wait until we're almost at a recent block to continue
-    if (Params().NetworkID() != CBaseChainParams::REGTEST &&
-        !IsBlockchainSynced() && RequestedMasternodeAssets > MASTERNODE_SYNC_SPORKS) return;
-
-    TRY_LOCK(cs_vNodes, lockRecv);
-    if (!lockRecv) return;
-
-    BOOST_FOREACH (CNode* pnode, vNodes) {
-        if (Params().NetworkID() == CBaseChainParams::REGTEST) {
-            if (RequestedMasternodeAttempt <= 2) {
-                pnode->PushMessage("getsporks"); //get current network sporks
-            } else if (RequestedMasternodeAttempt < 4) {
-                mnodeman.DsegUpdate(pnode);
-            } else if (RequestedMasternodeAttempt < 6) {
-                int nMnCount = mnodeman.CountEnabled();
-                pnode->PushMessage("mnget", nMnCount); //sync payees
-                uint256 n = 0;
-                pnode->PushMessage("mnvs", n); //sync masternode votes
-            } else {
-                RequestedMasternodeAssets = MASTERNODE_SYNC_FINISHED;
-            }
-            RequestedMasternodeAttempt++;
-            return;
-        }
-
-        //set to synced
-        if (RequestedMasternodeAssets == MASTERNODE_SYNC_SPORKS) {
-            if (pnode->HasFulfilledRequest("getspork")) continue;
-            pnode->FulfilledRequest("getspork");
-
-            pnode->PushMessage("getsporks"); //get current network sporks
-            if (RequestedMasternodeAttempt >= 2) GetNextAsset();
-            RequestedMasternodeAttempt++;
-
-            return;
-        }
-
-        if (pnode->nVersion >= masternodePayments.GetMinMasternodePaymentsProto()) {
-            if (RequestedMasternodeAssets == MASTERNODE_SYNC_LIST) {
-                LogPrint("masternode", "CMasternodeSync::Process() - lastMasternodeList %lld (GetTime() - MASTERNODE_SYNC_TIMEOUT) %lld\n", lastMasternodeList, GetTime() - MASTERNODE_SYNC_TIMEOUT);
-                if (lastMasternodeList > 0 && lastMasternodeList < GetTime() - MASTERNODE_SYNC_TIMEOUT * 2 && RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD) { //hasn't received a new item in the last five seconds, so we'll move to the
-                    GetNextAsset();
-                    return;
-                }
-
-                if (pnode->HasFulfilledRequest("mnsync")) continue;
-                pnode->FulfilledRequest("mnsync");
-
-                // timeout
-                if (lastMasternodeList == 0 &&
-                    (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3 || GetTime() - nAssetSyncStarted > MASTERNODE_SYNC_TIMEOUT * 5)) {
-                    if (IsSporkActive(SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT)) {
-                        LogPrintf("CMasternodeSync::Process - ERROR - Sync has failed, will retry later\n");
-                        RequestedMasternodeAssets = MASTERNODE_SYNC_FAILED;
-                        RequestedMasternodeAttempt = 0;
-                        lastFailure = GetTime();
-                        nCountFailures++;
-                    } else {
-                        GetNextAsset();
-                    }
-                    return;
-                }
-
-                if (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3) return;
-
-                mnodeman.DsegUpdate(pnode);
-                RequestedMasternodeAttempt++;
-                return;
-            }
-
-            if (RequestedMasternodeAssets == MASTERNODE_SYNC_MNW) {
-                if (lastMasternodeWinner > 0 && lastMasternodeWinner < GetTime() - MASTERNODE_SYNC_TIMEOUT * 2 && RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD) { //hasn't received a new item in the last five seconds, so we'll move to the
-                    GetNextAsset();
-                    return;
-                }
-
-                if (pnode->HasFulfilledRequest("mnwsync")) continue;
-                pnode->FulfilledRequest("mnwsync");
-
-                // timeout
-                if (lastMasternodeWinner == 0 &&
-                    (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3 || GetTime() - nAssetSyncStarted > MASTERNODE_SYNC_TIMEOUT * 5)) {
-                    if (IsSporkActive(SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT)) {
-                        LogPrintf("CMasternodeSync::Process - ERROR - Sync has failed, will retry later\n");
-                        RequestedMasternodeAssets = MASTERNODE_SYNC_FAILED;
-                        RequestedMasternodeAttempt = 0;
-                        lastFailure = GetTime();
-                        nCountFailures++;
-                    } else {
-                        GetNextAsset();
-                    }
-                    return;
-                }
-
-                if (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3) return;
-
-                CBlockIndex* pindexPrev = chainActive.Tip();
-                if (pindexPrev == NULL) return;
-
-                int nMnCount = mnodeman.CountEnabled();
-                pnode->PushMessage("mnget", nMnCount); //sync payees
-                RequestedMasternodeAttempt++;
-
-                return;
-            }
-        }
-
-        if (pnode->nVersion >= ActiveProtocol()) {
-            if (RequestedMasternodeAssets == MASTERNODE_SYNC_BUDGET) {
-                
-                // We'll start rejecting votes if we accidentally get set as synced too soon
-                if (lastBudgetItem > 0 && lastBudgetItem < GetTime() - MASTERNODE_SYNC_TIMEOUT * 2 && RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD) { 
-                    
-                    // Hasn't received a new item in the last five seconds, so we'll move to the
-                    GetNextAsset();
-
-                    // Try to activate our masternode if possible
-                    activeMasternode.ManageStatus();
-
-                    return;
-                }
-
-                // timeout
-                if (lastBudgetItem == 0 &&
-                    (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3 || GetTime() - nAssetSyncStarted > MASTERNODE_SYNC_TIMEOUT * 5)) {
-                    // maybe there is no budgets at all, so just finish syncing
-                    GetNextAsset();
-                    activeMasternode.ManageStatus();
-                    return;
-                }
-
-                if (pnode->HasFulfilledRequest("busync")) continue;
-                pnode->FulfilledRequest("busync");
-
-                if (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3) return;
-
-                uint256 n = 0;
-                pnode->PushMessage("mnvs", n); //sync masternode votes
-                RequestedMasternodeAttempt++;
-
-                return;
-            }
-        }
+    // MasterWin v5: masternodes/budgets are deprecated. SPORK_8/9/10/13
+    // are off at the consensus layer; no peer gossips a masternode list,
+    // winners, or budget items, so every legacy mnsync stage just times
+    // out after 25s.  Worse, when the state machine finally reaches
+    // FINISHED, the "Resync if we lost all masternodes" branch below sees
+    // CountEnabled() == 0 (always true in v5), calls Reset(), and kicks
+    // the whole dance back to INITIAL -- stranding the wallet at ~50% on
+    // the "Synchronizing additional data" progress bar indefinitely.
+    //
+    // Pin the state machine at FINISHED so IsSynced() returns true the
+    // moment the blockchain finishes syncing.  Sporks still propagate
+    // via normal gossip independently of this state machine.
+    if (RequestedMasternodeAssets != MASTERNODE_SYNC_FINISHED) {
+        RequestedMasternodeAssets = MASTERNODE_SYNC_FINISHED;
+        RequestedMasternodeAttempt = 0;
+        nAssetSyncStarted = GetTime();
     }
 }

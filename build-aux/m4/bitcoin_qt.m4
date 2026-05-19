@@ -342,19 +342,41 @@ AC_DEFUN([_BITCOIN_QT_FIND_STATIC_PLUGINS],[
    if test "x$use_pkgconfig" = xyes; then
    : dnl
    m4_ifdef([PKG_CHECK_MODULES],[
-     PKG_CHECK_MODULES([QTPLATFORM], [Qt5PlatformSupport], [QT_LIBS="$QTPLATFORM_LIBS $QT_LIBS"])
+     dnl Qt 5.8 split the monolithic Qt5PlatformSupport module into per-feature
+     dnl Qt5*Support archives. Try the legacy module first; if absent, fall
+     dnl back to the split-out archives that ship in the depends/ tree.
+     PKG_CHECK_MODULES([QTPLATFORM], [Qt5PlatformSupport],
+       [QT_LIBS="$QTPLATFORM_LIBS $QT_LIBS"],
+       [QT_LIBS="$QT_LIBS -l${QT_LIB_PREFIX}EventDispatcherSupport -l${QT_LIB_PREFIX}FontDatabaseSupport -l${QT_LIB_PREFIX}ThemeSupport -l${QT_LIB_PREFIX}AccessibilitySupport"])
      if test "x$TARGET_OS" = xlinux; then
        PKG_CHECK_MODULES([X11XCB], [x11-xcb], [QT_LIBS="$X11XCB_LIBS $QT_LIBS"])
        if ${PKG_CONFIG} --exists "Qt5Core >= 5.5" 2>/dev/null; then
          PKG_CHECK_MODULES([QTXCBQPA], [Qt5XcbQpa], [QT_LIBS="$QTXCBQPA_LIBS $QT_LIBS"])
        fi
+       dnl Wrap everything Qt-related in --start-group/--end-group so the
+       dnl static linker retries unresolved symbols across libraries.
+       dnl Without this, qtextengine.cpp (in Qt5Gui) references hb_* from
+       dnl libqtharfbuzz.a but the linker has already processed
+       dnl libqtharfbuzz before reaching Gui in some link orders, or vice
+       dnl versa, and drops the needed translation units. Linkage groups
+       dnl are the standard fix for circular static-archive deps.
+       dnl Bundled Qt 3rdparty (libqtharfbuzz / libqtlibpng / libqtpcre2)
+       dnl plus fontconfig/freetype/dbus/expat (static) plus a duplicate
+       dnl mention of Qt5Gui/Core (for ThemeSupport->QPlatformMenu) are
+       dnl all included.
+       dnl Mention the bundled 3rd-party static archives BEFORE Qt5Gui,
+       dnl then AGAIN after, so that whichever ordering libtool decides
+       dnl to keep, the hb_/png_/pcre_ symbols can be resolved. libtool
+       dnl tends to strip our --start-group markers (works on direct ld
+       dnl but not via libtool), so we lean on simple repetition.
+       QT_LIBS="-lqtharfbuzz -lqtlibpng -lqtpcre2 $QT_LIBS -lfontconfig -lfreetype -ldbus-1 -lexpat -lqtharfbuzz -lqtlibpng -lqtpcre2 -l${QT_LIB_PREFIX}Gui -l${QT_LIB_PREFIX}Core -lqtharfbuzz -lqtlibpng -lqtpcre2"
      elif test "x$TARGET_OS" = xdarwin; then
        PKG_CHECK_MODULES([QTPRINT], [Qt5PrintSupport], [QT_LIBS="$QTPRINT_LIBS $QT_LIBS"])
      fi
    ])
    else
      if test "x$TARGET_OS" = xwindows; then
-       AC_CACHE_CHECK(for Qt >= 5.6, bitcoin_cv_need_platformsupport,[
+       AC_CACHE_CHECK(for Qt >= 5.8, bitcoin_cv_qt58_split_support,[
          AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
              #include <QtCore/qconfig.h>
              #ifndef QT_VERSION
@@ -362,14 +384,29 @@ AC_DEFUN([_BITCOIN_QT_FIND_STATIC_PLUGINS],[
              #endif
            ]],
            [[
-             #if QT_VERSION < 0x050600
+             #if QT_VERSION < 0x050800
              choke
              #endif
            ]])],
-         [bitcoin_cv_need_platformsupport=yes],
-         [bitcoin_cv_need_platformsupport=no])
+         [bitcoin_cv_qt58_split_support=yes],
+         [bitcoin_cv_qt58_split_support=no])
        ])
-       if test "x$bitcoin_cv_need_platformsupport" = xyes; then
+       if test "x$bitcoin_cv_qt58_split_support" = xyes; then
+         dnl Qt 5.8+ replaced the monolithic libQt5PlatformSupport.a
+         dnl with split-out per-feature *Support archives. Link them all
+         dnl up so the windows QPA plugin (libqwindows.a) resolves.
+         QT_LIBS="$QT_LIBS -l${QT_LIB_PREFIX}EventDispatcherSupport -l${QT_LIB_PREFIX}FontDatabaseSupport -l${QT_LIB_PREFIX}ThemeSupport -l${QT_LIB_PREFIX}AccessibilitySupport"
+         dnl Qt 5.8+ also ships its bundled 3rd-party libs as separate static
+         dnl archives (libqtharfbuzz.a, libqtlibpng.a, libqtpcre2.a). The
+         dnl windows static link needs all three -- otherwise libQt5Gui has
+         dnl undefined refs (hb_ot_*, png_*, pcre2_*).
+         QT_LIBS="$QT_LIBS -lqtharfbuzz -lqtlibpng -lqtpcre2"
+         dnl Qt5Core + Qt5Gui on windows static reference additional WinAPI
+         dnl libs that the default mingw link doesn't pull in: version.dll
+         dnl (Get/VerQueryValueW), dwmapi.dll (DwmExtendFrameIntoClientArea),
+         dnl uxtheme.dll, netapi32 (NetWkstaGetInfo), wtsapi32 (WTSRegisterSessionNotification).
+         QT_LIBS="$QT_LIBS -lversion -ldwmapi -luxtheme -lnetapi32 -lwtsapi32"
+       else
          BITCOIN_QT_CHECK(AC_CHECK_LIB([${QT_LIB_PREFIX}PlatformSupport],[main],,BITCOIN_QT_FAIL(lib${QT_LIB_PREFIX}PlatformSupport not found)))
        fi
      fi

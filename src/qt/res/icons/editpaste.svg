@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ep_gold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffd24a"/>
+      <stop offset="100%" stop-color="#ff7a3d"/>
+    </linearGradient>
+    <linearGradient id="ep_cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff"/>
+      <stop offset="100%" stop-color="#0090ff"/>
+    </linearGradient>
+    <filter id="ep_glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#ep_glow)">
+    <!-- clipboard body -->
+    <rect x="7" y="6" width="18" height="22" rx="2"
+          fill="none" stroke="url(#ep_gold)" stroke-width="1.8"/>
+    <!-- clip at top: tab + button -->
+    <rect x="12" y="3" width="8" height="5" rx="1"
+          fill="url(#ep_gold)" opacity="0.9"/>
+    <rect x="13.5" y="2" width="5" height="3" rx="0.8"
+          fill="#0a0d1c" stroke="url(#ep_gold)" stroke-width="0.8"/>
+    <!-- paste-content lines on clipboard, in cyan -->
+    <line x1="10" y1="14" x2="22" y2="14" stroke="url(#ep_cyan)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="10" y1="18" x2="22" y2="18" stroke="url(#ep_cyan)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="10" y1="22" x2="18" y2="22" stroke="url(#ep_cyan)" stroke-width="1.4" stroke-linecap="round"/>
+  </g>
+</svg>

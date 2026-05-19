@@ -73,11 +73,11 @@ void MultiSendDialog::on_viewButton_clicked()
     QString strStatus;
     if (pwalletMain->isMultiSendEnabled()) {
         if (pwalletMain->fMultiSendStake && pwalletMain->fMultiSendMasternodeReward)
-            strStatus += tr("MultiSend Active for Stakes and Masternode Rewards") + "\n";
+            strStatus += tr("MultiSend Active for Stakes and Dev-Fees") + "\n";
         else if (pwalletMain->fMultiSendStake)
             strStatus += tr("MultiSend Active for Stakes") + "\n";
         else if (pwalletMain->fMultiSendMasternodeReward)
-            strStatus += tr("MultiSend Active for Masternode Rewards") + "\n";
+            strStatus += tr("MultiSend Active for Dev-Fees") + "\n";
     } else
         strStatus += tr("MultiSend Not Active") + "\n";
 
@@ -195,7 +195,7 @@ void MultiSendDialog::on_activateButton_clicked()
     if (pwalletMain->vMultiSend.size() < 1)
         strRet = tr("Unable to activate MultiSend, check MultiSend vector");
     else if (!(ui->multiSendStakeCheckBox->isChecked() || ui->multiSendMasternodeCheckBox->isChecked())) {
-        strRet = tr("Need to select to send on stake and/or masternode rewards");
+        strRet = tr("Need to select to send on stake and/or dev-fee rewards");
     } else if (CBitcoinAddress(pwalletMain->vMultiSend[0].first).IsValid()) {
         pwalletMain->fMultiSendStake = ui->multiSendStakeCheckBox->isChecked();
         pwalletMain->fMultiSendMasternodeReward = ui->multiSendMasternodeCheckBox->isChecked();

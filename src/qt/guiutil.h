@@ -208,6 +208,11 @@ void restoreWindowGeometry(const QString& strSetting, const QSize& defaultSizeIn
 /** Load global CSS theme */
 QString loadStyleSheet();
 
+/** Register the bundled Neon-Edition fonts (Orbitron / Rajdhani / Sora)
+ *  with QFontDatabase. Must be called once at startup, after QApplication
+ *  is created but before any widget that uses the fonts is shown. */
+void loadCustomFonts();
+
 /** Check whether a theme is not build-in */
 bool isExternal(QString theme);
 

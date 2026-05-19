@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TX_INPUT: receiving. 3D inbox tray with cyan down-arrow. -->
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ia" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#bff9ff"/>
+      <stop offset="55%" stop-color="#00f0ff"/>
+      <stop offset="100%" stop-color="#0064ff"/>
+    </linearGradient>
+    <linearGradient id="itray" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#162a5a"/>
+      <stop offset="100%" stop-color="#050818"/>
+    </linearGradient>
+    <filter id="ifx" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#ifx)">
+    <!-- arrow shaft -->
+    <rect x="13" y="2" width="6" height="13" rx="1.5" fill="url(#ia)"/>
+    <!-- arrow head -->
+    <path d="M7 14 L16 23 L25 14 Z" fill="url(#ia)"/>
+  </g>
+  <!-- 3D tray with depth -->
+  <path d="M3 21 L29 21 L27 28 L5 28 Z" fill="url(#itray)" stroke="#00f0ff" stroke-width="1.2"/>
+  <rect x="6" y="24" width="20" height="2" rx="1" fill="#00f0ff" opacity="0.7"/>
+  <ellipse cx="16" cy="21" rx="13" ry="1.5" fill="#00f0ff" opacity="0.45"/>
+</svg>

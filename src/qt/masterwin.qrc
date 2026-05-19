@@ -116,4 +116,12 @@
         <file alias="spinner-033">res/movies/spinner-033.png</file>
         <file alias="spinner-034">res/movies/spinner-034.png</file>
     </qresource>
+    <qresource prefix="/fonts">
+        <file alias="orbitron-regular">res/fonts/Orbitron-Regular.ttf</file>
+        <file alias="orbitron-bold">res/fonts/Orbitron-Bold.ttf</file>
+        <file alias="rajdhani-regular">res/fonts/Rajdhani-Regular.ttf</file>
+        <file alias="rajdhani-semibold">res/fonts/Rajdhani-SemiBold.ttf</file>
+        <file alias="sora-regular">res/fonts/Sora-Regular.ttf</file>
+        <file alias="sora-semibold">res/fonts/Sora-SemiBold.ttf</file>
+    </qresource>
 </RCC>

@@ -1915,6 +1915,20 @@ int64_t GetBlockValue(int nHeight)
 			return 250000 * COIN;
 	}
 
+	// ===== MW v5: fixed 10 MW/block from the fork height to the 100M cap =====
+	// At activation (block 2,020,328) ~73.64 M MW are already minted.
+	// 26,359,017 MW remain to reach the 100 M hard cap. At 10 MW per block
+	// that takes 2,635,902 blocks -> the last block paying any subsidy is
+	// 2,020,327 + 2,635,902 = 4,656,229. After that the subsidy is 0 and
+	// the chain keeps running on transaction fees only (pure PoS continues
+	// to confirm payments indefinitely without inflation).
+	if (Params().IsV5Active(nHeight)) {
+		if (nHeight <= 4656229)
+			return 10 * COIN;
+		return 0;
+	}
+
+	// ===== Legacy v4.x subsidy schedule (validates pre-fork chain) =====
 	int64_t nSubsidy = 0;
 	if (nHeight <= Params().LAST_POW_BLOCK() && nHeight >= 0) {
 		nSubsidy = 110000 * COIN;

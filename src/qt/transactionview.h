@@ -51,11 +51,14 @@ public:
     };
 
     enum ColumnWidths {
-        STATUS_COLUMN_WIDTH = 23,
-        WATCHONLY_COLUMN_WIDTH = 23,
-        DATE_COLUMN_WIDTH = 120,
-        TYPE_COLUMN_WIDTH = 240,
-        AMOUNT_MINIMUM_COLUMN_WIDTH = 120,
+        // v5 Neon: widened so DATUM/ART/ADRESSE are never truncated even
+        // at the default 850x550 wallet window size. Amount column still
+        // auto-stretches via TableViewLastColumnResizingFixer below.
+        STATUS_COLUMN_WIDTH = 36,
+        WATCHONLY_COLUMN_WIDTH = 24,
+        DATE_COLUMN_WIDTH = 150,
+        TYPE_COLUMN_WIDTH = 160,
+        AMOUNT_MINIMUM_COLUMN_WIDTH = 140,
         MINIMUM_COLUMN_WIDTH = 23
     };
 

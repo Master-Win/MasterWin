@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TX_INOUT: self-transfer. Two curved arrows (cyan in, gold out) forming a swap. -->
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="incurve" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#00f0ff"/>
+      <stop offset="100%" stop-color="#0064ff"/>
+    </linearGradient>
+    <linearGradient id="outcurve" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#ffd24a"/>
+      <stop offset="100%" stop-color="#ff7a3d"/>
+    </linearGradient>
+    <filter id="iofx" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#iofx)" stroke-linejoin="round">
+    <!-- top curve: cyan, arrow pointing right -->
+    <path d="M4 8 Q 16 0 28 8"
+          fill="none" stroke="url(#incurve)" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M24 4 L29 8 L24 12 Z" fill="url(#incurve)"/>
+    <!-- bottom curve: gold, arrow pointing left -->
+    <path d="M28 24 Q 16 32 4 24"
+          fill="none" stroke="url(#outcurve)" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M8 28 L3 24 L8 20 Z" fill="url(#outcurve)"/>
+  </g>
+</svg>

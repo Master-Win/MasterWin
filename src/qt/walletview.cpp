@@ -127,7 +127,7 @@ WalletView::WalletView(QWidget* parent) : QStackedWidget(parent),
     addWidget(explorerWindow);
 
     QSettings settings;
-    if (settings.value("fShowMasternodesTab").toBool()) {
+    if (false /* v5: Masternodes-Tab permanently removed */ && settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage = new MasternodeList();
         addWidget(masternodeListPage);
     }
@@ -179,7 +179,7 @@ void WalletView::setClientModel(ClientModel* clientModel)
     overviewPage->setClientModel(clientModel);
     sendCoinsPage->setClientModel(clientModel);
     QSettings settings;
-    if (settings.value("fShowMasternodesTab").toBool()) {
+    if (false /* v5: Masternodes-Tab permanently removed */ && settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setClientModel(clientModel);
     }
 }
@@ -192,7 +192,7 @@ void WalletView::setWalletModel(WalletModel* walletModel)
     transactionView->setModel(walletModel);
     overviewPage->setWalletModel(walletModel);
     QSettings settings;
-    if (settings.value("fShowMasternodesTab").toBool()) {
+    if (false /* v5: Masternodes-Tab permanently removed */ && settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setWalletModel(walletModel);
     }
     privacyPage->setModel(walletModel);
@@ -258,7 +258,7 @@ void WalletView::gotoBlockExplorerPage()
 void WalletView::gotoMasternodePage()
 {
     QSettings settings;
-    if (settings.value("fShowMasternodesTab").toBool()) {
+    if (false /* v5: Masternodes-Tab permanently removed */ && settings.value("fShowMasternodesTab").toBool()) {
         setCurrentWidget(masternodeListPage);
     }
 }

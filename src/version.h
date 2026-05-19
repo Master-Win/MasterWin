@@ -12,7 +12,12 @@
  * network protocol versioning
  */
 
-static const int PROTOCOL_VERSION = 70922;
+// v5 Neon Edition: bump protocol version so old v4.x nodes are rejected
+// from the v5 mesh. Once block 2,020,328 is mined under v5 rules, the
+// hard-fork is irreversible -- but we additionally cut v4 nodes off at
+// the wire level so they cannot keep gossiping the dead v4 chain through
+// the v5 network.
+static const int PROTOCOL_VERSION = 71000;
 
 //! initial proto version, to be increased after version/verack negotiation
 static const int INIT_PROTO_VERSION = 209;
@@ -21,10 +26,12 @@ static const int INIT_PROTO_VERSION = 209;
 static const int GETHEADERS_VERSION = 70077;
 
 //! disconnect from peers older than this proto version
-static const int MIN_PEER_PROTO_VERSION_BEFORE_ENFORCEMENT = 70921;
-static const int MIN_PEER_PROTO_VERSION_AFTER_ENFORCEMENT = 70922;
+//! v5 requires 71000 -- any node still on the old v4 protocol (70922) is
+//! considered legacy and dropped immediately on version handshake.
+static const int MIN_PEER_PROTO_VERSION_BEFORE_ENFORCEMENT = 71000;
+static const int MIN_PEER_PROTO_VERSION_AFTER_ENFORCEMENT = 71000;
 
-static const int MIN_PEER_PROTO_VERSION_MNW_VIN = 70922;
+static const int MIN_PEER_PROTO_VERSION_MNW_VIN = 71000;
 
 //! masternodes older than this proto version use old strMessage format for mnannounce
 static const int MIN_PEER_MNANNOUNCE = 70915;

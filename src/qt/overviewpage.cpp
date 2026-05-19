@@ -130,6 +130,14 @@ OverviewPage::OverviewPage(QWidget* parent) : QWidget(parent),
     ui->labelWalletStatus->setText("(" + tr("out of sync") + ")");
     ui->labelTransactionsStatus->setText("(" + tr("out of sync") + ")");
 
+    // v5: hide the redundant "MW Balance" panel.  It used to be the
+    // wallet-vs-masternode-balance breakdown; in v5 (no masternodes)
+    // it just duplicates the Combined Balance shown at the top with
+    // the big Orbitron numbers.  Keeping it visible was confusing
+    // users into thinking the wallet had two separate balances.
+    if (ui->frame_Balances)
+        ui->frame_Balances->setVisible(false);
+
     // start with displaying the "out of sync" warnings
     showOutOfSyncWarning(true);
 }

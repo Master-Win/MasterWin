@@ -272,6 +272,24 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
 
 int CSporkManager::GetSporkIDByName(std::string strName)
 {
+    // MasterWin v5 user-facing labels (post-fork: no masternodes, no
+    // budget, no SwiftTX). The integer spork IDs are unchanged so the
+    // wire protocol stays compatible -- only the human-readable strings
+    // were renamed to drop the obsolete MASTERNODE / SWIFTTX terminology.
+    if (strName == "SPORK_2_LEGACY_INSTANT_TX") return SPORK_2_SWIFTTX;
+    if (strName == "SPORK_3_LEGACY_INSTANT_FILTER") return SPORK_3_SWIFTTX_BLOCK_FILTERING;
+    if (strName == "SPORK_5_MAX_TX_VALUE") return SPORK_5_MAX_VALUE;
+    if (strName == "SPORK_7_LEGACY_NODE_SCAN") return SPORK_7_MASTERNODE_SCANNING;
+    if (strName == "SPORK_8_LEGACY_NODE_PAYMENT") return SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT;
+    if (strName == "SPORK_9_LEGACY_BUDGET") return SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT;
+    if (strName == "SPORK_10_LEGACY_PROTO_UPDATE") return SPORK_10_MASTERNODE_PAY_UPDATED_NODES;
+    if (strName == "SPORK_13_LEGACY_SUPERBLOCKS") return SPORK_13_ENABLE_SUPERBLOCKS;
+    if (strName == "SPORK_14_NEW_PROTOCOL_ENFORCEMENT") return SPORK_14_NEW_PROTOCOL_ENFORCEMENT;
+    if (strName == "SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2") return SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2;
+    if (strName == "SPORK_16_ZEROCOIN_MAINTENANCE") return SPORK_16_ZEROCOIN_MAINTENANCE_MODE;
+
+    // Backwards-compat: accept the legacy v4 spork names so RPC clients
+    // and tooling that still spell them the old way keep working.
     if (strName == "SPORK_2_SWIFTTX") return SPORK_2_SWIFTTX;
     if (strName == "SPORK_3_SWIFTTX_BLOCK_FILTERING") return SPORK_3_SWIFTTX_BLOCK_FILTERING;
     if (strName == "SPORK_5_MAX_VALUE") return SPORK_5_MAX_VALUE;
@@ -280,8 +298,6 @@ int CSporkManager::GetSporkIDByName(std::string strName)
     if (strName == "SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT") return SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT;
     if (strName == "SPORK_10_MASTERNODE_PAY_UPDATED_NODES") return SPORK_10_MASTERNODE_PAY_UPDATED_NODES;
     if (strName == "SPORK_13_ENABLE_SUPERBLOCKS") return SPORK_13_ENABLE_SUPERBLOCKS;
-    if (strName == "SPORK_14_NEW_PROTOCOL_ENFORCEMENT") return SPORK_14_NEW_PROTOCOL_ENFORCEMENT;
-    if (strName == "SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2") return SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2;
     if (strName == "SPORK_16_ZEROCOIN_MAINTENANCE_MODE") return SPORK_16_ZEROCOIN_MAINTENANCE_MODE;
 
     return -1;
@@ -289,17 +305,19 @@ int CSporkManager::GetSporkIDByName(std::string strName)
 
 std::string CSporkManager::GetSporkNameByID(int id)
 {
-    if (id == SPORK_2_SWIFTTX) return "SPORK_2_SWIFTTX";
-    if (id == SPORK_3_SWIFTTX_BLOCK_FILTERING) return "SPORK_3_SWIFTTX_BLOCK_FILTERING";
-    if (id == SPORK_5_MAX_VALUE) return "SPORK_5_MAX_VALUE";
-    if (id == SPORK_7_MASTERNODE_SCANNING) return "SPORK_7_MASTERNODE_SCANNING";
-    if (id == SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT) return "SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT";
-    if (id == SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT) return "SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT";
-    if (id == SPORK_10_MASTERNODE_PAY_UPDATED_NODES) return "SPORK_10_MASTERNODE_PAY_UPDATED_NODES";
-    if (id == SPORK_13_ENABLE_SUPERBLOCKS) return "SPORK_13_ENABLE_SUPERBLOCKS";
+    // Returns the v5 cleaned-up labels. See GetSporkIDByName above for
+    // the rationale.
+    if (id == SPORK_2_SWIFTTX) return "SPORK_2_LEGACY_INSTANT_TX";
+    if (id == SPORK_3_SWIFTTX_BLOCK_FILTERING) return "SPORK_3_LEGACY_INSTANT_FILTER";
+    if (id == SPORK_5_MAX_VALUE) return "SPORK_5_MAX_TX_VALUE";
+    if (id == SPORK_7_MASTERNODE_SCANNING) return "SPORK_7_LEGACY_NODE_SCAN";
+    if (id == SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT) return "SPORK_8_LEGACY_NODE_PAYMENT";
+    if (id == SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT) return "SPORK_9_LEGACY_BUDGET";
+    if (id == SPORK_10_MASTERNODE_PAY_UPDATED_NODES) return "SPORK_10_LEGACY_PROTO_UPDATE";
+    if (id == SPORK_13_ENABLE_SUPERBLOCKS) return "SPORK_13_LEGACY_SUPERBLOCKS";
     if (id == SPORK_14_NEW_PROTOCOL_ENFORCEMENT) return "SPORK_14_NEW_PROTOCOL_ENFORCEMENT";
     if (id == SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2) return "SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2";
-    if (id == SPORK_16_ZEROCOIN_MAINTENANCE_MODE) return "SPORK_16_ZEROCOIN_MAINTENANCE_MODE";
+    if (id == SPORK_16_ZEROCOIN_MAINTENANCE_MODE) return "SPORK_16_ZEROCOIN_MAINTENANCE";
 
     return "Unknown";
 }

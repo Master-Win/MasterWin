@@ -353,36 +353,15 @@ static const CRPCCommand vRPCCommands[] =
         {"hidden", "setmocktime", &setmocktime, true, false, false},
 
         /* MasterWin features */
-        {"masterwin", "masternode", &masternode, true, true, false},
-        {"masterwin", "listmasternodes", &listmasternodes, true, true, false},
-        {"masterwin", "getmasternodecount", &getmasternodecount, true, true, false},
-        {"masterwin", "masternodeconnect", &masternodeconnect, true, true, false},
-        {"masterwin", "createmasternodebroadcast", &createmasternodebroadcast, true, true, false},
-        {"masterwin", "decodemasternodebroadcast", &decodemasternodebroadcast, true, true, false},
-        {"masterwin", "relaymasternodebroadcast", &relaymasternodebroadcast, true, true, false},
-        {"masterwin", "masternodecurrent", &masternodecurrent, true, true, false},
-        {"masterwin", "masternodedebug", &masternodedebug, true, true, false},
-        {"masterwin", "startmasternode", &startmasternode, true, true, false},
-        {"masterwin", "createmasternodekey", &createmasternodekey, true, true, false},
-        {"masterwin", "getmasternodeoutputs", &getmasternodeoutputs, true, true, false},
-        {"masterwin", "listmasternodeconf", &listmasternodeconf, true, true, false},
-        {"masterwin", "getmasternodestatus", &getmasternodestatus, true, true, false},
-        {"masterwin", "getmasternodewinners", &getmasternodewinners, true, true, false},
-        {"masterwin", "getmasternodescores", &getmasternodescores, true, true, false},
-        {"masterwin", "mnbudget", &mnbudget, true, true, false},
-        {"masterwin", "preparebudget", &preparebudget, true, true, false},
-        {"masterwin", "submitbudget", &submitbudget, true, true, false},
-        {"masterwin", "mnbudgetvote", &mnbudgetvote, true, true, false},
-        {"masterwin", "getbudgetvotes", &getbudgetvotes, true, true, false},
-        {"masterwin", "getnextsuperblock", &getnextsuperblock, true, true, false},
-        {"masterwin", "getbudgetprojection", &getbudgetprojection, true, true, false},
-        {"masterwin", "getbudgetinfo", &getbudgetinfo, true, true, false},
-        {"masterwin", "mnbudgetrawvote", &mnbudgetrawvote, true, true, false},
-        {"masterwin", "mnfinalbudget", &mnfinalbudget, true, true, false},
-        {"masterwin", "checkbudgets", &checkbudgets, true, true, false},
-        {"masterwin", "mnsync", &mnsync, true, true, false},
+        // v5: masternode + budget + mnsync + pool RPC entry points have been
+        // removed -- the coin is PoS-only and there are no masternodes to
+        // command, no budgets to vote on, and no obfuscation pool to query.
+        // The underlying validation code is still compiled in so the legacy
+        // chain up to block 2,020,327 continues to validate, but the RPC
+        // surface is gone.
+        // `spork` is kept because spork signalling is still useful (e.g. an
+        // emergency switch) and is independent of the masternode layer.
         {"masterwin", "spork", &spork, true, true, false},
-        {"masterwin", "getpoolinfo", &getpoolinfo, true, true, false},
 
 #ifdef ENABLE_WALLET
         /* Wallet */

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_recv" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#ffd24a"/>
+      <stop offset="55%"  stop-color="#ff7a3d"/>
+      <stop offset="100%" stop-color="#ff2cd5"/>
+    </linearGradient>
+    <filter id="glow_r" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- vault / inbox tray with arrow pointing down into it -->
+  <g filter="url(#glow_r)">
+    <!-- arrow body pointing down -->
+    <rect x="34" y="14" width="12" height="26" rx="3" fill="url(#g_recv)"/>
+    <!-- arrow head -->
+    <path d="M22 38 L40 56 L58 38 Z" fill="url(#g_recv)"/>
+  </g>
+  <!-- tray base -->
+  <rect x="16" y="58" width="48" height="6"  rx="3" fill="#ffd24a" opacity="0.55"/>
+  <rect x="20" y="64" width="40" height="2.5" rx="1.2" fill="#ff2cd5" opacity="0.6"/>
+</svg>

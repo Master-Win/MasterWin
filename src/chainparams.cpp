@@ -135,6 +135,18 @@ public:
         /** Height or Time Based Activations **/
         nLastPOWBlock = 100;
         nModifierUpdateBlock = 999999999;
+
+        /** ===== MW v5 hard-fork: PoS-only + dev-fee, no masternodes =====
+         *  Activation at block 2020328 -- the next block produced after the
+         *  current stuck tip (2,020,327) on 2026-05-17. All blocks at and
+         *  below 2,020,327 are validated by legacy v4.x consensus rules
+         *  unchanged, so the historical chain is fully preserved.
+         *  From 2,020,328 onward: PoW blocks rejected, masternode-payment
+         *  enforcement gone, 25% dev-fee vout required in the coinstake. */
+        nV5ForkHeight = 2020328;
+        nV5DevFeePercent = 25;
+        strV5DevFeeAddress = "MAzMpMaLr1Yxd2zzkNirNzeTGNp69q1XxM";
+
         nZerocoinStartHeight = 1576790167;
         nZerocoinStartTime = 1576775767;
         nBlockEnforceSerialRange = 253; //Enforce serial range starting this block
@@ -404,6 +416,11 @@ public:
         nTargetTimespan = 1 * 60; // MasterWin: 1 day
         nTargetSpacing = 1 * 60;  // MasterWin: 1 minute
         nLastPOWBlock = 200;
+        // v5 hard-fork inherits mainnet defaults on testnet/regtest (just init);
+        // mainnet's values are the canonical ones for production.
+        nV5ForkHeight = 999999999;
+        nV5DevFeePercent = 25;
+        strV5DevFeeAddress = "MAzMpMaLr1Yxd2zzkNirNzeTGNp69q1XxM";
         nMaturity = 15;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 51197; //approx Mon, 17 Apr 2017 04:00:00 GMT

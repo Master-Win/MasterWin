@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_gear" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#00f0ff"/>
+      <stop offset="50%"  stop-color="#8b5cff"/>
+      <stop offset="100%" stop-color="#ff2cd5"/>
+    </linearGradient>
+    <filter id="glow_g" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- 8-tooth gear -->
+  <g filter="url(#glow_g)" transform="translate(40 40)">
+    <g fill="url(#g_gear)">
+      <!-- 8 teeth rotated 45 deg apart -->
+      <rect x="-4" y="-30" width="8" height="10" rx="2"/>
+      <rect x="-4" y="-30" width="8" height="10" rx="2" transform="rotate(45)"/>
+      <rect x="-4" y="-30" width="8" height="10" rx="2" transform="rotate(90)"/>
+      <rect x="-4" y="-30" width="8" height="10" rx="2" transform="rotate(135)"/>
+      <rect x="-4" y="-30" width="8" height="10" rx="2" transform="rotate(180)"/>
+      <rect x="-4" y="-30" width="8" height="10" rx="2" transform="rotate(225)"/>
+      <rect x="-4" y="-30" width="8" height="10" rx="2" transform="rotate(270)"/>
+      <rect x="-4" y="-30" width="8" height="10" rx="2" transform="rotate(315)"/>
+    </g>
+    <circle r="20" fill="url(#g_gear)"/>
+    <circle r="8"  fill="#07081f"/>
+    <circle r="5"  fill="#ffd24a"/>
+  </g>
+</svg>

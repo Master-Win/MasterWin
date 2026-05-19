@@ -53,6 +53,7 @@
 #include <QDoubleValidator>
 #include <QFileDialog>
 #include <QFont>
+#include <QFontDatabase>
 #include <QLineEdit>
 #include <QSettings>
 #include <QTextDocument> // for Qt::mightBeRichText
@@ -836,6 +837,27 @@ QString loadStyleSheet()
     }
 
     return styleSheet;
+}
+
+void loadCustomFonts()
+{
+    // MW v5 Neon Edition: register the bundled cyberpunk fonts so the
+    // QSS theme's font-family declarations (Orbitron / Rajdhani / Sora)
+    // resolve regardless of what the host OS has installed.
+    static const char* const fonts[] = {
+        ":/fonts/orbitron-regular",
+        ":/fonts/orbitron-bold",
+        ":/fonts/rajdhani-regular",
+        ":/fonts/rajdhani-semibold",
+        ":/fonts/sora-regular",
+        ":/fonts/sora-semibold",
+    };
+    for (const char* res : fonts) {
+        int id = QFontDatabase::addApplicationFont(QString::fromUtf8(res));
+        if (id == -1) {
+            LogPrintf("loadCustomFonts(): failed to load embedded font %s\n", res);
+        }
+    }
 }
 
 void setClipboard(const QString& str)

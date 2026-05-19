@@ -513,7 +513,7 @@ std::string HelpMessage(HelpMessageMode mode)
     }
     strUsage += HelpMessageOpt("-shrinkdebugfile", _("Shrink debug.log file on client startup (default: 1 when no -debug)"));
     strUsage += HelpMessageOpt("-testnet", _("Use the test network"));
-    strUsage += HelpMessageOpt("-litemode=<n>", strprintf(_("Disable all MasterWin specific functionality (Masternodes, Zerocoin, SwiftX, Budgeting) (0-1, default: %u)"), 0));
+    strUsage += HelpMessageOpt("-litemode=<n>", strprintf(_("Disable legacy Zerocoin / SwiftX / Budget code paths (0-1, default: %u)"), 0));
 
 #ifdef ENABLE_WALLET
     strUsage += HelpMessageGroup(_("Staking options:"));
@@ -526,13 +526,9 @@ std::string HelpMessage(HelpMessageMode mode)
     }
 #endif
 
-    strUsage += HelpMessageGroup(_("Masternode options:"));
-    strUsage += HelpMessageOpt("-masternode=<n>", strprintf(_("Enable the client to act as a masternode (0-1, default: %u)"), 0));
-    strUsage += HelpMessageOpt("-mnconf=<file>", strprintf(_("Specify masternode configuration file (default: %s)"), "masternode.conf"));
-    strUsage += HelpMessageOpt("-mnconflock=<n>", strprintf(_("Lock masternodes from masternode configuration file (default: %u)"), 1));
-    strUsage += HelpMessageOpt("-masternodeprivkey=<n>", _("Set the masternode private key"));
-    strUsage += HelpMessageOpt("-masternodeaddr=<n>", strprintf(_("Set external address:port to get to this masternode (example: %s)"), "128.127.106.235:" + Params ().GetDefaultPort ()));
-    strUsage += HelpMessageOpt("-budgetvotemode=<mode>", _("Change automatic finalized budget voting behavior. mode=auto: Vote for only exact finalized budget match to my generated budget. (string, default: auto)"));
+    // v5: masternode / budget CLI options are no-ops post-fork.  The
+    // flags themselves still parse for backwards-compat with v4 startup
+    // scripts but they're not advertised in --help anymore.
 
 
     strUsage += HelpMessageGroup(_("SwiftX options:"));
@@ -1688,8 +1684,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
     // ********************************************************* Step 10: setup ObfuScation
-
-    uiInterface.InitMessage(_("Loading masternode cache..."));
+    // v5: masternodes/budgets are deprecated.  We still call into the
+    // legacy cache loaders so any leftover on-disk caches from a v4
+    // upgrade get cleared cleanly, but we don't bother the user with
+    // "Loading masternode cache..." status-bar flashes during startup.
 
     CMasternodeDB mndb;
     CMasternodeDB::ReadResult readResult = mndb.Read(mnodeman);
@@ -1703,8 +1701,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             LogPrintf("file format is unknown or invalid, please fix it manually\n");
     }
 
-    uiInterface.InitMessage(_("Loading budget cache..."));
-
+    // v5: no UI message for the legacy budget cache load -- same reason.
     CBudgetDB budgetdb;
     CBudgetDB::ReadResult readResult2 = budgetdb.Read(budget);
 
@@ -1723,8 +1720,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     budget.ClearSeen();
 
 
-    uiInterface.InitMessage(_("Loading masternode payment cache..."));
-
+    // v5: no UI message for the legacy MN payment cache load -- same reason.
     CMasternodePaymentDB mnpayments;
     CMasternodePaymentDB::ReadResult readResult3 = mnpayments.Read(masternodePayments);
 
@@ -1779,15 +1775,36 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     //get the mode of budget voting for this masternode
     strBudgetMode = GetArg("-budgetvotemode", "auto");
 
-    if (GetBoolArg("-mnconflock", true) && pwalletMain) {
+    // MasterWin v5: masternodes are deprecated.  In v4 this block locked
+    // every collateral output listed in masternode.conf so the user
+    // couldn't accidentally spend an MN's 10k MW collateral and break
+    // the node.  In v5 there are no masternodes to break, but users
+    // upgrading from v4 still have those locks recorded in their wallet
+    // -- so on every v5 startup we UNLOCK any output that masternode.conf
+    // tells us was previously a collateral, returning the coins to the
+    // spendable "Available" balance immediately.  -mnconflock kept around
+    // as a switch (default off) so an operator running an exotic v4
+    // setup can still opt back in.
+    if (GetBoolArg("-mnconflock", false) && pwalletMain) {
         LOCK(pwalletMain->cs_wallet);
-        LogPrintf("Locking Masternodes:\n");
+        LogPrintf("Locking Masternodes (legacy -mnconflock=1):\n");
         uint256 mnTxHash;
         BOOST_FOREACH (CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
             LogPrintf("  %s %s\n", mne.getTxHash(), mne.getOutputIndex());
             mnTxHash.SetHex(mne.getTxHash());
             COutPoint outpoint = COutPoint(mnTxHash, boost::lexical_cast<unsigned int>(mne.getOutputIndex()));
             pwalletMain->LockCoin(outpoint);
+        }
+    } else if (pwalletMain && masternodeConfig.getCount() > 0) {
+        LOCK(pwalletMain->cs_wallet);
+        LogPrintf("Unlocking %d legacy masternode collateral output(s) from masternode.conf:\n",
+                  masternodeConfig.getCount());
+        uint256 mnTxHash;
+        BOOST_FOREACH (CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+            LogPrintf("  unlock %s:%s\n", mne.getTxHash(), mne.getOutputIndex());
+            mnTxHash.SetHex(mne.getTxHash());
+            COutPoint outpoint = COutPoint(mnTxHash, boost::lexical_cast<unsigned int>(mne.getOutputIndex()));
+            pwalletMain->UnlockCoin(outpoint);
         }
     }
 

@@ -266,6 +266,12 @@ RPCConsole::RPCConsole(QWidget* parent) : QDialog(parent, Qt::WindowSystemMenuHi
     ui->setupUi(this);
     GUIUtil::restoreWindowGeometry("nRPCConsoleWindow", this->size(), this);
 
+    // v5: hide the "Number of Masternodes" row in the Information tab.
+    // The network has no masternodes anymore so the count is always 0
+    // and the field just clutters the panel.
+    if (ui->masternodeCountLabel) ui->masternodeCountLabel->setVisible(false);
+    if (ui->masternodeCount) ui->masternodeCount->setVisible(false);
+
 #ifndef Q_OS_MAC
     ui->openDebugLogfileButton->setIcon(QIcon(":/icons/export"));
 #endif

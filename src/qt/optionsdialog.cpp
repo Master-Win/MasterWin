@@ -42,6 +42,13 @@ OptionsDialog::OptionsDialog(QWidget* parent, bool enableWallet) : QDialog(paren
     ui->setupUi(this);
     GUIUtil::restoreWindowGeometry("nOptionsDialogWindow", this->size(), this);
 
+    // v5: the Masternodes tab is permanently disabled in BitcoinGUI (see
+    // CreateActions in bitcoingui.cpp), so the "Show Masternodes Tab"
+    // checkbox here has nothing to enable.  Hide it instead of confusing
+    // users with a setting that does nothing.
+    if (ui->showMasternodesTab)
+        ui->showMasternodesTab->setVisible(false);
+
     /* Main elements init */
     ui->databaseCache->setMinimum(nMinDbCache);
     ui->databaseCache->setMaximum(nMaxDbCache);

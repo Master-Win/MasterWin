@@ -45,6 +45,14 @@
 #include <boost/thread.hpp>
 
 #include <QApplication>
+#include <QColor>
+#include <QEvent>
+#include <QObject>
+#include <QPalette>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <dwmapi.h>
+#endif
 #include <QDebug>
 #include <QLibraryInfo>
 #include <QLocale>
@@ -510,6 +518,51 @@ int main(int argc, char* argv[])
     Q_INIT_RESOURCE(masterwin);
 
     BitcoinApplication app(argc, argv);
+    // MW v5 Neon Edition: register Orbitron/Rajdhani/Sora before any widget
+    // built from the QSS theme is shown -- ensures font-family declarations
+    // resolve to the bundled glyphs regardless of host-OS font availability.
+    GUIUtil::loadCustomFonts();
+
+    // v5 Neon Edition: make QLineEdit placeholder text actually readable
+    // against the dark theme. Qt 5.9 doesn't honour placeholder-text-color
+    // in QSS, so we have to nudge the palette.
+    {
+        QPalette pal = QApplication::palette();
+#if QT_VERSION >= QT_VERSION_CHECK(5,12,0)
+        pal.setColor(QPalette::PlaceholderText, QColor(180, 165, 110));
+#endif
+        // Disabled-text colour is used as the placeholder fallback on Qt 5.9-5.11
+        pal.setColor(QPalette::Disabled, QPalette::Text, QColor(180, 165, 110));
+        QApplication::setPalette(pal);
+    }
+
+#ifdef Q_OS_WIN
+    // MW v5 Neon Edition: ALL top-level windows get the immersive-dark
+    // title bar (was previously only the main window). Implemented as an
+    // application-wide event filter so dialogs (Options, RPC Console,
+    // About, Help, etc.) inherit the same treatment without each having
+    // to call DwmSetWindowAttribute itself.
+    class DarkTitleBarFilter : public QObject {
+    public:
+        explicit DarkTitleBarFilter(QObject* parent = nullptr) : QObject(parent) {}
+    protected:
+        bool eventFilter(QObject* obj, QEvent* ev) override {
+            if (ev->type() == QEvent::WinIdChange || ev->type() == QEvent::Show) {
+                QWidget* w = qobject_cast<QWidget*>(obj);
+                if (w && w->isWindow()) {
+                    HWND hwnd = reinterpret_cast<HWND>(w->winId());
+                    if (hwnd) {
+                        BOOL useDark = TRUE;
+                        DwmSetWindowAttribute(hwnd, 20, &useDark, sizeof(useDark));
+                        DwmSetWindowAttribute(hwnd, 19, &useDark, sizeof(useDark));
+                    }
+                }
+            }
+            return QObject::eventFilter(obj, ev);
+        }
+    };
+    app.installEventFilter(new DarkTitleBarFilter(&app));
+#endif
 #if QT_VERSION > 0x050100
     // Generate high-dpi pixmaps
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);

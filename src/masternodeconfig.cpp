@@ -25,15 +25,12 @@ bool CMasternodeConfig::read(std::string& strErr)
     boost::filesystem::ifstream streamConfig(pathMasternodeConfigFile);
 
     if (!streamConfig.good()) {
-        FILE* configFile = fopen(pathMasternodeConfigFile.string().c_str(), "a");
-        if (configFile != NULL) {
-            std::string strHeader = "# Masternode config file\n"
-                                    "# Format: alias IP:port masternodeprivkey collateral_output_txid collateral_output_index\n"
-                                    "# Example: mn1 127.0.0.2:" + std::to_string (Params ().GetDefaultPort ()) +  " 93HaYBVUCYjEMeeH1Y4sBGLALQZE1Yc1K64xiqgX37tGBDQL8Xg 2bcd3c84c84f87eaa86e4e56834c92927a07f9e18718810b92e0d0324456a67c 0\n";
-            fwrite(strHeader.c_str(), std::strlen(strHeader.c_str()), 1, configFile);
-            fclose(configFile);
-        }
-        return true; // Nothing to read, so just return
+        // MasterWin v5: masternodes are deprecated.  Don't auto-create a
+        // masternode.conf template on fresh installs -- it would just
+        // litter the data directory with an unused legacy config file.
+        // If a user has an existing masternode.conf from v4 we still read
+        // it below for backwards compatibility, but we never write one.
+        return true;
     }
 
     for (std::string line; std::getline(streamConfig, line); linenumber++) {

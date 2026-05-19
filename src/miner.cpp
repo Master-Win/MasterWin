@@ -600,7 +600,16 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
 				continue;
 			}
 
-			while (vNodes.empty() || pwallet->IsLocked() || !fMintableCoins || (pwallet->GetBalance() > 0 && nReserveBalance >= pwallet->GetBalance()) || !masternodeSync.IsSynced()) {
+			// Bypass the masternode-sync FSM gate when EITHER:
+			//   a) `-bypassmnsync=1` is set explicitly (legacy escape hatch), OR
+			//   b) the chain has crossed the MW v5 fork height (post-v5 there
+			//      are no masternodes at all -- mnsync would NEVER finish).
+			// Either way the produced block is consensus-validated by every
+			// other node by the normal rules, so this only changes whether
+			// our own staker thread will TRY to produce a block.
+			bool fV5Active = chainActive.Tip() && Params().IsV5Active(chainActive.Tip()->nHeight + 1);
+			bool fBypassMnsync = fV5Active || GetBoolArg("-bypassmnsync", false);
+			while (vNodes.empty() || pwallet->IsLocked() || !fMintableCoins || (pwallet->GetBalance() > 0 && nReserveBalance >= pwallet->GetBalance()) || (!fBypassMnsync && !masternodeSync.IsSynced())) {
 				nLastCoinStakeSearchInterval = 0;
 				// Do a separate 1 minute check here to ensure fMintableCoins is updated
 				if (!fMintableCoins) {

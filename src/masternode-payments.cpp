@@ -6,7 +6,9 @@
 
 #include "masternode-payments.h"
 #include "addrman.h"
+#include "base58.h"
 #include "chainparams.h"
+#include "main.h"
 #include "masternode-budget.h"
 #include "masternode-sync.h"
 #include "masternodeman.h"
@@ -223,8 +225,47 @@ bool IsBlockValueValid(const CBlock& block, CAmount nExpectedValue, CAmount nMin
     return true;
 }
 
+// ===== MW v5 block-payment validation =====
+// From the v5 fork height onward the coinstake MUST include a vout to the
+// configured dev-fee address, and no masternode-payment vout is required
+// or expected.
+static bool IsBlockPayeeValid_V5(const CBlock& block, int nBlockHeight)
+{
+    if (nBlockHeight <= Params().LAST_POW_BLOCK()) {
+        // Shouldn't happen post-fork (we reject PoW), but be safe.
+        return true;
+    }
+    if (block.vtx.size() < 2) return false;
+    const CTransaction& txStake = block.vtx[1];
+
+    const int devFeePercent = Params().V5DevFeePercent();
+    if (devFeePercent <= 0) return true; // no fee configured -> nothing to check
+
+    CBitcoinAddress devAddr(Params().V5DevFeeAddress());
+    if (!devAddr.IsValid()) return true; // misconfigured -> don't break the chain
+    CScript devPayee = GetScriptForDestination(devAddr.Get());
+
+    CAmount blockValue = GetBlockValue(nBlockHeight - 1);
+    CAmount devFeeExpected = blockValue * devFeePercent / 100;
+
+    for (const CTxOut& out : txStake.vout) {
+        if (out.scriptPubKey == devPayee && out.nValue >= devFeeExpected)
+            return true;
+    }
+    LogPrint("masternode",
+             "MW v5: missing dev-fee output (>= %s to %s) at height %d\n",
+             FormatMoney(devFeeExpected), Params().V5DevFeeAddress(), nBlockHeight);
+    return false;
+}
+
 bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
 {
+    // From v5 onward only the dev-fee output needs validating;
+    // masternode + budget machinery is bypassed entirely.
+    if (Params().IsV5Active(nBlockHeight)) {
+        return IsBlockPayeeValid_V5(block, nBlockHeight);
+    }
+
     TrxValidationStatus transactionStatus = TrxValidationStatus::InValid;
 
     if (!masternodeSync.IsSynced()) { //there is no budget data to use to check anything -- find the longest chain
@@ -270,10 +311,55 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
 }
 
 
+// ===== MW v5: Pay the dev-fee from the staking reward, no masternodes =====
+// Called from CMasternodePayments::FillBlockPayee below when the next block
+// is past the V5 fork height. Skips ALL masternode/budget logic.
+static void FillBlockPayee_V5(CMutableTransaction& txNew, CBlockIndex* pindexPrev,
+                              CAmount blockValue, bool fProofOfStake)
+{
+    const int devFeePercent = Params().V5DevFeePercent();
+    if (devFeePercent <= 0) return; // no dev-fee configured -> nothing to add
+
+    CAmount devFee = blockValue * devFeePercent / 100;
+    if (devFee <= 0) return;
+
+    CBitcoinAddress devAddr(Params().V5DevFeeAddress());
+    if (!devAddr.IsValid()) {
+        LogPrintf("FillBlockPayee_V5: invalid dev-fee address \"%s\" -- "
+                  "skipping dev-fee for this block (REVIEW chainparams!)\n",
+                  Params().V5DevFeeAddress());
+        return;
+    }
+    CScript devPayee = GetScriptForDestination(devAddr.Get());
+
+    // Append the dev-fee vout to the coinstake/coinbase, and reduce the
+    // staker's vout by the same amount so the block-value stays balanced.
+    unsigned int i = txNew.vout.size();
+    txNew.vout.resize(i + 1);
+    txNew.vout[i].scriptPubKey = devPayee;
+    txNew.vout[i].nValue       = devFee;
+
+    int stakerOutIdx = fProofOfStake ? 1 : 0;
+    if (stakerOutIdx < (int)txNew.vout.size() &&
+        !txNew.vout[stakerOutIdx].IsZerocoinMint())
+    {
+        txNew.vout[stakerOutIdx].nValue -= devFee;
+    }
+
+    LogPrint("masternode", "MW v5 dev-fee %s -> %s\n",
+             FormatMoney(devFee), Params().V5DevFeeAddress());
+}
+
 void FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake, bool fZMWStake)
 {
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (!pindexPrev) return;
+
+    // From v5 fork height onward: pure dev-fee, no masternode/budget.
+    if (Params().IsV5Active(pindexPrev->nHeight + 1)) {
+        FillBlockPayee_V5(txNew, pindexPrev, GetBlockValue(pindexPrev->nHeight), fProofOfStake);
+        return;
+    }
 
     if (IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) && budget.IsBudgetPaymentBlock(pindexPrev->nHeight + 1)) {
         budget.FillBlockPayee(txNew, nFees, fProofOfStake);

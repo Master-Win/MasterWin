@@ -1,0 +1,11 @@
+build-aarch64/
+build-linux-static/
+build-win64/
+build-win64-qt/
+autom4te.cache/
+depends/work/
+depends/sources/
+depends/built/
+depends/x86_64-pc-linux-gnu/
+depends/aarch64-linux-gnu/
+depends/x86_64-w64-mingw32/

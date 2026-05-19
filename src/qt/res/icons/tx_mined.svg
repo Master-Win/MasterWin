@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TX_MINED: staking reward. 3D gold lightning bolt with cyan electric arcs. -->
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bolt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ffefb0"/>
+      <stop offset="50%"  stop-color="#ffd24a"/>
+      <stop offset="100%" stop-color="#ff7a3d"/>
+    </linearGradient>
+    <linearGradient id="boltdark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#a16800"/>
+      <stop offset="100%" stop-color="#5a2c00"/>
+    </linearGradient>
+    <radialGradient id="boltglow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%"   stop-color="#ffd24a" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#ffd24a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="mfx" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.0" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- outer glow halo -->
+  <circle cx="16" cy="16" r="14" fill="url(#boltglow)"/>
+  <g filter="url(#mfx)">
+    <!-- main bolt -->
+    <path d="M20 2 L7 17 L13 17 L11 30 L26 13 L19 13 L21 2 Z"
+          fill="url(#bolt)" stroke="#ffefb0" stroke-width="0.7" stroke-linejoin="round"/>
+    <!-- depth shadow inside bolt -->
+    <path d="M20 2 L7 17 L13 17 L21 2 Z" fill="url(#boltdark)" opacity="0.25"/>
+  </g>
+  <!-- cyan electric arcs -->
+  <g stroke="#00f0ff" stroke-width="0.8" fill="none" opacity="0.9" stroke-linecap="round">
+    <path d="M3 7 L5 9 L4 11"/>
+    <path d="M28 22 L30 24 L29 26"/>
+  </g>
+</svg>

@@ -133,6 +133,17 @@ public:
     /** Height or Time Based Activations **/
     int ModifierUpgradeBlock() const { return nModifierUpdateBlock; }
     int LAST_POW_BLOCK() const { return nLastPOWBlock; }
+
+    /** MW v5 hard-fork: PoS-only, no masternodes, dev-fee. Active at and
+     *  above this block height. Below: legacy PIVX-era rules unchanged. */
+    int V5ForkHeight() const { return nV5ForkHeight; }
+    /** Dev-fee percentage of the stake reward, integer 0-100. */
+    int V5DevFeePercent() const { return nV5DevFeePercent; }
+    /** Dev-fee destination address (must be set before production deploy). */
+    std::string V5DevFeeAddress() const { return strV5DevFeeAddress; }
+    /** Convenience: is v5 active at the given height? */
+    bool IsV5Active(int nHeight) const { return nHeight >= nV5ForkHeight; }
+
     int Zerocoin_StartHeight() const { return nZerocoinStartHeight; }
     int Zerocoin_Block_EnforceSerialRange() const { return nBlockEnforceSerialRange; }
     int Zerocoin_Block_RecalculateAccumulators() const { return nBlockRecalculateAccumulators; }
@@ -298,7 +309,12 @@ protected:
     int nBlockLastGoodCheckpoint;
     int nBlockEnforceInvalidUTXO;
     int nBlockZerocoinV2;
-    
+
+    /** MW v5 hard-fork parameters (PoS-only + dev-fee, no masternodes). */
+    int nV5ForkHeight;
+    int nV5DevFeePercent;
+    std::string strV5DevFeeAddress;
+
     std::vector<MasternodeTiers> vMasternodeTiers;
 };
 
