@@ -959,12 +959,23 @@ void BitcoinGUI::setNumBlocks(int count)
     // v5.0.3: Masternode-Sync vollständig aus dem UI-Pfad entfernt.
     // In MW v5 gibt es keine Masternodes mehr — die alte MN-FSM lieferte
     // willkürliche "out of sync" Zustände auch bei perfekt synchroner Chain.
-    // Sync-Anzeige basiert jetzt rein auf Chain-Tip-Frische: wenn der
-    // letzte Block jünger als 15 Minuten ist -> synced; sonst catching-up.
-    // (15 Min weil MW ~2.5min Blockzeit hat -> 6 Blöcke Toleranz.)
-    const int SYNC_FRESHNESS_SECS = 15 * 60;
-    bool fChainSynced = (secs >= 0 && secs < SYNC_FRESHNESS_SECS);
+    //
+    // Neue Logik:
+    //  1) Threshold = 4 Stunden  (PoS-Chain hat unregelmäßige Block-Lücken;
+    //     bei niedriger Staker-Aktivität können 30+ Min zwischen Blöcken
+    //     liegen — ein zu enger Threshold würde dann fälschlich "out of
+    //     sync" zeigen obwohl die Wallet am Chain-Tip ist.)
+    //  2) STICKY: sobald wir einmal als synced erkannt wurden, bleiben wir
+    //     synced bis zum Wallet-Neustart. Auch wenn die Chain später eine
+    //     mehrstündige Lücke hat — solange die Wallet selbst am Tip ist,
+    //     zeigen wir keinen "out of sync" Tag mehr.
+    //     Catching-up wird nur beim allerersten Start angezeigt (bis der
+    //     erste frische Block durchgelaufen ist).
+    const int SYNC_FRESHNESS_SECS = 4 * 60 * 60;
+    static bool fEverSynced = false;
+    bool fChainSynced = fEverSynced || (secs >= 0 && secs < SYNC_FRESHNESS_SECS);
     if (fChainSynced) {
+        fEverSynced = true;
         tooltip = tr("Up to date") + QString(".<br>") + tooltip;
         progressBarLabel->setVisible(false);
         progressBar->setVisible(false);
