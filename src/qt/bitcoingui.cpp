@@ -956,50 +956,26 @@ void BitcoinGUI::setNumBlocks(int count)
 
     tooltip = tr("Processed %n blocks of transaction history.", "", count);
 
-    // Set icon state: spinning if catching up, tick otherwise
-    //    if(secs < 25*60) // 90*60 for bitcoin but we are 4x times faster
-    if (masternodeSync.IsBlockchainSynced()) {
-        QString strSyncStatus;
+    // v5.0.3: Masternode-Sync vollständig aus dem UI-Pfad entfernt.
+    // In MW v5 gibt es keine Masternodes mehr — die alte MN-FSM lieferte
+    // willkürliche "out of sync" Zustände auch bei perfekt synchroner Chain.
+    // Sync-Anzeige basiert jetzt rein auf Chain-Tip-Frische: wenn der
+    // letzte Block jünger als 15 Minuten ist -> synced; sonst catching-up.
+    // (15 Min weil MW ~2.5min Blockzeit hat -> 6 Blöcke Toleranz.)
+    const int SYNC_FRESHNESS_SECS = 15 * 60;
+    bool fChainSynced = (secs >= 0 && secs < SYNC_FRESHNESS_SECS);
+    if (fChainSynced) {
         tooltip = tr("Up to date") + QString(".<br>") + tooltip;
-
-        if (masternodeSync.IsSynced()) {
-            progressBarLabel->setVisible(false);
-            progressBar->setVisible(false);
-            labelBlocksIcon->setPixmap(QIcon(":/icons/synced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
-            // Fully synced -- the "Up to date." line set above (line 947)
-            // is enough.  Don't append a second copy from GetSyncStatus()
-            // (which now also returns "Up to date" in the FINISHED state),
-            // or the tooltip ends up with two redundant "Up to date" lines.
-		}
-		else {
-            int nAttempt;
-            int progress = 0;
-
-            labelBlocksIcon->setPixmap(QIcon(QString(
-                                                 ":/movies/spinner-%1")
-                                                 .arg(spinnerFrame, 3, 10, QChar('0')))
-                                           .pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
-            spinnerFrame = (spinnerFrame + 1) % SPINNER_FRAMES;
+        progressBarLabel->setVisible(false);
+        progressBar->setVisible(false);
+        labelBlocksIcon->setPixmap(QIcon(":/icons/synced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
 
 #ifdef ENABLE_WALLET
-            if (walletFrame)
-                walletFrame->showOutOfSyncWarning(false);
+        if (walletFrame)
+            walletFrame->showOutOfSyncWarning(false);
 #endif // ENABLE_WALLET
-
-            nAttempt = masternodeSync.RequestedMasternodeAttempt < MASTERNODE_SYNC_THRESHOLD ?
-                           masternodeSync.RequestedMasternodeAttempt + 1 :
-                           MASTERNODE_SYNC_THRESHOLD;
-            progress = nAttempt + (masternodeSync.RequestedMasternodeAssets - 1) * MASTERNODE_SYNC_THRESHOLD;
-            progressBar->setMaximum(4 * MASTERNODE_SYNC_THRESHOLD);
-            progressBar->setFormat(tr("Synchronizing additional data: %p%"));
-            progressBar->setValue(progress);
-
-            strSyncStatus = QString(masternodeSync.GetSyncStatus().c_str());
-            progressBarLabel->setText(strSyncStatus);
-            tooltip = strSyncStatus + QString("<br>") + tooltip;
-        }
-	}
-	else {
+    }
+    else {
         // Represent time from last generated block in human readable text
         QString timeBehindText;
         const int HOUR_IN_SECONDS = 60 * 60;
