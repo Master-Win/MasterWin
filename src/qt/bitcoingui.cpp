@@ -956,26 +956,48 @@ void BitcoinGUI::setNumBlocks(int count)
 
     tooltip = tr("Processed %n blocks of transaction history.", "", count);
 
-    // v5.0.3: Masternode-Sync vollständig aus dem UI-Pfad entfernt.
-    // In MW v5 gibt es keine Masternodes mehr — die alte MN-FSM lieferte
-    // willkürliche "out of sync" Zustände auch bei perfekt synchroner Chain.
+    // v5.0.4: ehrlicher Sync-Status via Peer-Höhen-Vergleich.
+    //
+    // Frühere Logik (sticky-flag in v5.0.3) konnte einen Fork verstecken —
+    // ein Server der alleine staket erzeugt eine private Chain, Tip ist
+    // immer "frisch" -> sticky-flag bleibt grün, aber wir sind in
+    // Wirklichkeit ~5000 Blöcke voraus aller anderen.
     //
     // Neue Logik:
-    //  1) Threshold = 4 Stunden  (PoS-Chain hat unregelmäßige Block-Lücken;
-    //     bei niedriger Staker-Aktivität können 30+ Min zwischen Blöcken
-    //     liegen — ein zu enger Threshold würde dann fälschlich "out of
-    //     sync" zeigen obwohl die Wallet am Chain-Tip ist.)
-    //  2) STICKY: sobald wir einmal als synced erkannt wurden, bleiben wir
-    //     synced bis zum Wallet-Neustart. Auch wenn die Chain später eine
-    //     mehrstündige Lücke hat — solange die Wallet selbst am Tip ist,
-    //     zeigen wir keinen "out of sync" Tag mehr.
-    //     Catching-up wird nur beim allerersten Start angezeigt (bis der
-    //     erste frische Block durchgelaufen ist).
-    const int SYNC_FRESHNESS_SECS = 4 * 60 * 60;
-    static bool fEverSynced = false;
-    bool fChainSynced = fEverSynced || (secs >= 0 && secs < SYNC_FRESHNESS_SECS);
+    //  - hole max(peer.nStartingHeight) über alle verbundenen Peers
+    //  - wenn weniger als 1 Peer mit known height -> sync-state unbekannt,
+    //    fallback auf alten "tip-frisch" Test (4h Threshold)
+    //  - sonst:
+    //     |local - max_peer| <= 6  -> synced (grün)
+    //     local <  max_peer - 6    -> behind (out of sync, normal catch-up)
+    //     local >  max_peer + 30   -> AHEAD (potential fork! prominently warn)
+    const int SYNC_TOLERANCE_BLOCKS  = 6;     // normal lag
+    const int FORK_AHEAD_THRESHOLD   = 30;    // wir voraus = wahrscheinlich Fork
+    const int SYNC_FRESHNESS_FALLBACK_SECS = 4 * 60 * 60;
+
+    int nMaxPeerHeight = clientModel->getMaxPeerHeight();
+    bool fHavePeerData = (nMaxPeerHeight > 0);
+    bool fChainSynced;
+    bool fProbablyForked = false;
+
+    if (fHavePeerData) {
+        int nGap = nMaxPeerHeight - count;        // positive = we are behind
+        if (nGap >= -SYNC_TOLERANCE_BLOCKS && nGap <= SYNC_TOLERANCE_BLOCKS) {
+            fChainSynced = true;
+        } else if (nGap < -FORK_AHEAD_THRESHOLD) {
+            // we are way ahead of every peer -> isolated fork
+            fChainSynced = false;
+            fProbablyForked = true;
+        } else {
+            // we are behind
+            fChainSynced = false;
+        }
+    } else {
+        // no peer data yet -> fall back to tip-freshness (4h tolerance for PoS gaps)
+        fChainSynced = (secs >= 0 && secs < SYNC_FRESHNESS_FALLBACK_SECS);
+    }
+
     if (fChainSynced) {
-        fEverSynced = true;
         tooltip = tr("Up to date") + QString(".<br>") + tooltip;
         progressBarLabel->setVisible(false);
         progressBar->setVisible(false);
@@ -1009,12 +1031,23 @@ void BitcoinGUI::setNumBlocks(int count)
         }
 
         progressBarLabel->setVisible(true);
-        progressBar->setFormat(tr("%1 behind. Scanning block %2").arg(timeBehindText).arg(count));
+        if (fProbablyForked) {
+            // v5.0.4: lokal ist >30 Blöcke vor allen verbundenen Peers ->
+            // wir hängen mit hoher Wahrscheinlichkeit auf einer Insel-Chain.
+            // Klare Diagnose statt irreführendem "N hours behind".
+            progressBar->setFormat(tr("Possible fork: %1 blocks ahead of peers (block %2)").arg(count - nMaxPeerHeight).arg(count));
+        } else {
+            progressBar->setFormat(tr("%1 behind. Scanning block %2").arg(timeBehindText).arg(count));
+        }
         progressBar->setMaximum(1000000000);
         progressBar->setValue(clientModel->getVerificationProgress() * 1000000000.0 + 0.5);
         progressBar->setVisible(true);
 
-        tooltip = tr("Catching up...") + QString("<br>") + tooltip;
+        if (fProbablyForked) {
+            tooltip = tr("WARNING: this node appears to be on an isolated chain (ahead of all peers). Restart the daemon and clear chainstate to resync.") + QString("<br>") + tooltip;
+        } else {
+            tooltip = tr("Catching up...") + QString("<br>") + tooltip;
+        }
         if (count != prevBlocks) {
             labelBlocksIcon->setPixmap(QIcon(QString(
                                                  ":/movies/spinner-%1")

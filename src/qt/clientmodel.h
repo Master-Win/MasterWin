@@ -56,6 +56,11 @@ public:
     QString getMasternodeCountString() const;
     int getNumBlocks() const;
     int getNumBlocksAtStartup();
+    //! v5.0.4: highest block height any currently-connected peer has reported.
+    //! Returns 0 if no peers (or all peers report startingheight=-1).
+    //! Used by the sync indicator to decide whether the wallet is genuinely
+    //! at the network tip vs. ahead-on-a-fork or behind.
+    int getMaxPeerHeight() const;
 
     quint64 getTotalBytesRecv() const;
     quint64 getTotalBytesSent() const;

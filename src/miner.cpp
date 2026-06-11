@@ -609,7 +609,49 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
 			// our own staker thread will TRY to produce a block.
 			bool fV5Active = chainActive.Tip() && Params().IsV5Active(chainActive.Tip()->nHeight + 1);
 			bool fBypassMnsync = fV5Active || GetBoolArg("-bypassmnsync", false);
-			while (vNodes.empty() || pwallet->IsLocked() || !fMintableCoins || (pwallet->GetBalance() > 0 && nReserveBalance >= pwallet->GetBalance()) || (!fBypassMnsync && !masternodeSync.IsSynced())) {
+
+			// v5.0.4: ISOLATION GUARD — verhindert Insel-Chain Forks.
+			// Wenn (a) wir <3 verbundene Peers haben ODER (b) wir bereits
+			// >20 Blöcke vor dem höchsten Peer-Tip liegen, dann produzieren
+			// wir KEINE Blöcke. Sonst riskieren wir genau das Szenario das
+			// einen unserer Server alleine auf 4756 Block-Vorsprung gefahren
+			// hat (siehe Incident-Report). Override mit -forcestake=1.
+			const int MIN_PEERS_FOR_STAKING        = 3;
+			const int MAX_AHEAD_OF_PEERS_FOR_STAKE = 20;
+			bool fForceStake = GetBoolArg("-forcestake", false);
+			int  nLocalHeight = chainActive.Height();
+			int  nMaxPeerH    = 0;
+			int  nPeerCount   = 0;
+			{
+				LOCK(cs_vNodes);
+				nPeerCount = (int)vNodes.size();
+				BOOST_FOREACH (CNode* pn, vNodes) {
+					if (pn->nStartingHeight > nMaxPeerH)
+						nMaxPeerH = pn->nStartingHeight;
+				}
+			}
+			bool fIsolated = false;
+			if (!fForceStake) {
+				if (nPeerCount < MIN_PEERS_FOR_STAKING) {
+					fIsolated = true;
+					static int64_t nLastLogPeers = 0;
+					if (GetTime() - nLastLogPeers > 60) {
+						LogPrintf("staker: refusing to stake — only %d peer(s) connected (need >= %d). Use -forcestake=1 to override.\n",
+							nPeerCount, MIN_PEERS_FOR_STAKING);
+						nLastLogPeers = GetTime();
+					}
+				} else if (nMaxPeerH > 0 && nLocalHeight > nMaxPeerH + MAX_AHEAD_OF_PEERS_FOR_STAKE) {
+					fIsolated = true;
+					static int64_t nLastLogAhead = 0;
+					if (GetTime() - nLastLogAhead > 60) {
+						LogPrintf("staker: refusing to stake — local tip %d is %d blocks AHEAD of best peer (%d). Possible isolated fork. Use -forcestake=1 to override.\n",
+							nLocalHeight, nLocalHeight - nMaxPeerH, nMaxPeerH);
+						nLastLogAhead = GetTime();
+					}
+				}
+			}
+
+			while (fIsolated || vNodes.empty() || pwallet->IsLocked() || !fMintableCoins || (pwallet->GetBalance() > 0 && nReserveBalance >= pwallet->GetBalance()) || (!fBypassMnsync && !masternodeSync.IsSynced())) {
 				nLastCoinStakeSearchInterval = 0;
 				// Do a separate 1 minute check here to ensure fMintableCoins is updated
 				if (!fMintableCoins) {

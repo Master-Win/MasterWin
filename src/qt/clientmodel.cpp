@@ -94,6 +94,22 @@ int ClientModel::getNumBlocksAtStartup()
     return numBlocksAtStartup;
 }
 
+int ClientModel::getMaxPeerHeight() const
+{
+    // v5.0.4: walk connected peers, return the highest startingheight they
+    // advertised when handshaking.  This is the cheapest proxy for "where
+    // is the network's tip?".  It's used by the UI sync indicator to detect
+    // genuine de-sync (local < network) and orphan-fork situations (local
+    // >> network), neither of which the old sticky-sync logic could catch.
+    LOCK(cs_vNodes);
+    int nMax = 0;
+    BOOST_FOREACH (CNode* pnode, vNodes) {
+        if (pnode->nStartingHeight > nMax)
+            nMax = pnode->nStartingHeight;
+    }
+    return nMax;
+}
+
 quint64 ClientModel::getTotalBytesRecv() const
 {
     return CNode::GetTotalBytesRecv();
